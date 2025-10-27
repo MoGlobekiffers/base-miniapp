@@ -1,17 +1,17 @@
-{                           
-  "accountAssociation": {   
-    "header": "",              
-    "payload": "",             
-    "signature": ""            
-  },                           
-  "miniapp": {                         
-    "name": "Base Mini App",           
-    "homeUrl": "/",                    
-    "iconUrl": "/icon.png",            
-    "primaryCategory": "tools",        
-    "tags": ["base","minikit"]         
-  },                                   
-  "baseBuilder": {                     
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "name": "Base Mini App",
+    "homeUrl": "/",
+    "iconUrl": "/favicon.ico",
+    "primaryCategory": "tools",
+    "tags": ["base", "minikit"]
+  },
+  "baseBuilder": {
     "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
-  } 
-}                                                                         
+  }
+}
