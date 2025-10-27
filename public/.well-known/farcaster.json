@@ -1,8 +1,8 @@
 {
   "accountAssociation": {
-    "header": "",
-    "payload": "",
-    "signature": ""
+    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
+    "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
+    "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
   },
   "baseBuilder": {
     "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
@@ -15,7 +15,11 @@
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/splash.png",
     "splashBackgroundColor": "#000000",
     "primaryCategory": "developer-tools",
-    "tags": ["base","minikit","utility"],
+    "tags": [
+      "base",
+      "minikit",
+      "utility"
+    ],
     "noindex": true
   }
 }
