@@ -1,7 +1,17 @@
-{
-  "accountAssociation": {
-    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
-    "payload": "eyJkb21haW4iOiJkYWlseXJvdXRpbmV3aGVlbC52ZXJjZWwuYXBwIn0",
-    "signature": "gJ22JU82DelKR66htHl8MyMfsWJcaiobeM4b0MINp2cl3DxSqBhhuaHLvzIfofnzmpFDWcWwFwKIBaQ3kxhv1Rw="
-  }
-}
+{                           
+  "accountAssociation": {   
+    "header": "",              
+    "payload": "",             
+    "signature": ""            
+  },                           
+  "miniapp": {                         
+    "name": "Base Mini App",           
+    "homeUrl": "/",                    
+    "iconUrl": "/icon.png",            
+    "primaryCategory": "tools",        
+    "tags": ["base","minikit"]         
+  },                                   
+  "baseBuilder": {                     
+    "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
+  } 
+}                                                                         
