@@ -1,25 +1,8 @@
 {
-  "accountAssociation": {
-    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
-    "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
-    "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
-  },
-  "baseBuilder": {
-    "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
-  },
-  "miniapp": {
-    "version": "1",
-    "name": "Base Mini App",
-    "homeUrl": "https://base-miniapp-gamma.vercel.app/",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon.png",
-    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/splash.png",
-    "splashBackgroundColor": "#000000",
-    "primaryCategory": "developer-tools",
-    "tags": [
-      "base",
-      "minikit",
-      "utility"
-    ],
-    "noindex": true
-  }
+  "name": "Base Miniapp",
+  "iconUrl": "https://placehold.co/512x512/png",
+  "imageUrl": "https://placehold.co/1200x630/png",
+  "publisher": "Your Name",
+  "description": "Miniapp de test avec endpoints healthz/ready",
+  "homepageUrl": "https://base-miniapp-gamma.vercel.app"
 }
