@@ -10,9 +10,9 @@
   "miniapp": {
     "version": "1",
     "name": "Base Mini App",
-    "homeUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/",
-    "iconUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/icon.png",
-    "splashImageUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/icon.png",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app/",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon.png",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/icon.png",
     "splashBackgroundColor": "#000000",
     "primaryCategory": "developer-tools",
     "tags": ["base","minikit","utility"],
