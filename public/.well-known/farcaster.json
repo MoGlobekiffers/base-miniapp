@@ -1,17 +1,21 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOiJkNzYyNiwiZGlldHlzZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjBlBOUUzNWFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUiFQ",
-    "payload": "eyJkb21haW4iOiJkYWlseXJvdXRpbmV3aGVlbC52ZXJjZWwuYXBwIn0",
-    "signature": "gJ22JU82De1KR66htHl8MyMfsWJcaiobeM4b0MINp2cI3DxSqBhhuaHLvzIfOfnzmpFDWcWwFwKlBaQ3kxhv1Rw="
-  },
-  "miniapp": {
-    "name": "Base Mini App",
-    "homeUrl": "/",
-    "iconUrl": "/favicon.ico",
-    "primaryCategory": "tools",
-    "tags": ["base", "minikit"]
+    "header": "",
+    "payload": "",
+    "signature": ""
   },
   "baseBuilder": {
     "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Base Mini App",
+    "homeUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/",
+    "iconUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/icon.png",
+    "splashImageUrl": "https://base-miniapp-ki9qzgdaz-globekiffers-projects.vercel.app/icon.png",
+    "splashBackgroundColor": "#000000",
+    "primaryCategory": "developer-tools",
+    "tags": ["base","minikit","utility"],
+    "noindex": true
   }
 }
