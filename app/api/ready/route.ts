@@ -1,4 +1,4 @@
-// app/api/healthz/route.ts
+// app/api/ready/route.ts
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 // export const runtime = 'edge';
