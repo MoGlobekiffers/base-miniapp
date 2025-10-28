@@ -1,10 +1,14 @@
 'use client'
 import { useEffect } from 'react'
-import { miniapp } from '@farcaster/miniapp-sdk'
+import { sdk } from '@farcaster/miniapp-sdk'
 
 export default function ReadyClient() {
   useEffect(() => {
-    miniapp.ready()
+    try {
+      sdk.ready()
+    } catch (e) {
+      console.error('sdk.ready() failed', e)
+    }
   }, [])
   return null
 }
