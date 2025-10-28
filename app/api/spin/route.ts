@@ -1,5 +1,4 @@
 export const runtime = 'edge';
-import { kv } from '@vercel/kv';
 
 type Task = { id: string; label: string; url: string };
 
@@ -18,8 +17,15 @@ const TASKS: Task[] = [
   { id: 'quest', label: 'Quest', url: 'https://guild.xyz' }
 ];
 
-const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+
+async function pickDeterministic(fid: number, date: string): Promise<Task> {
+  const enc = new TextEncoder().encode(`${fid}:${date}`);
+  const digest = await crypto.subtle.digest('SHA-256', enc);
+  const bytes = new Uint8Array(digest);
+  const idx = bytes[0] % TASKS.length;
+  return TASKS[idx];
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,21 +36,18 @@ export async function POST(req: Request) {
     }
 
     const today = dayKey(new Date());
-    const key = `spin:${fid}:${today}`;
-    const cached = await kv.get<Task>(key);
-    if (cached) {
-      const next = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 1, 0, 0, 0)).toISOString();
-      return Response.json({ task: cached, already: true, nextSpinAt: next }, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
-    }
+    const task = await pickDeterministic(fid, today);
+    const midnightUTC = Date.UTC(
+      new Date().getUTCFullYear(),
+      new Date().getUTCMonth(),
+      new Date().getUTCDate() + 1,
+      0, 0, 0
+    );
 
-    const task = pick<Task>(TASKS);
-    const now = new Date();
-    const midnightUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
-    const ttl = Math.max(1, Math.floor((midnightUTC - now.getTime()) / 1000));
-    await kv.set(key, task, { ex: ttl });
-    const next = new Date(midnightUTC).toISOString();
-
-    return Response.json({ task, nextSpinAt: next }, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    return Response.json(
+      { task, nextSpinAt: new Date(midnightUTC).toISOString() },
+      { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+    );
   } catch {
     return Response.json({ error: 'server_error' }, { status: 500 });
   }
