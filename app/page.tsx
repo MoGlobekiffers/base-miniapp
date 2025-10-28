@@ -1,109 +1,105 @@
-'use client'
-import { useMemo, useState } from 'react'
-import Wheel from './components/Wheel'
+'use client';
 
-type SpinTask = { id: string; label: string; url: string }
-type SpinResult = { task: SpinTask; nextSpinAt: string }
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Wheel from './components/Wheel';
 
-const SEGMENTS: SpinTask[] = [
-  { id: 'daily-log', label: 'Daily log', url: 'https://warpcast.com/compose' },
-  { id: 'reply', label: 'Reply', url: 'https://warpcast.com' },
-  { id: 'tx', label: 'Onchain tx', url: 'https://bridge.base.org' },
-  { id: 'quest', label: 'Quest', url: 'https://guild.xyz' },
-]
+type SpinResp = { task: { id: string; label: string; url: string }; nextSpinAt: string };
 
-const COLORS = ['#34d399', '#60a5fa', '#fbbf24', '#f472b6']
+const TASKS = [
+  { id: 'daily-log', label: 'Daily log', url: 'https://warpcast.com/compose', color: '#fde047' },
+  { id: 'contrib', label: 'Contribute repo', url: 'https://github.com/MoGlobekiffers/base-miniapp', color: '#86efac' },
+  { id: 'follow', label: 'Follow Base', url: 'https://warpcast.com/base', color: '#93c5fd' },
+  { id: 'like', label: 'Like a cast', url: 'https://warpcast.com/', color: '#fca5a5' },
+  { id: 'recast', label: 'Recast', url: 'https://warpcast.com/', color: '#ddd6fe' },
+  { id: 'quest', label: 'Quest', url: 'https://guild.xyz', color: '#a7f3d0' },
+];
 
-export default function Page() {
-  const [fid, setFid] = useState('')
-  const [spinning, setSpinning] = useState(false)
-  const [angle, setAngle] = useState(0)
-  const [result, setResult] = useState<SpinResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+function msUntil(iso: string) {
+  const t = new Date(iso).getTime() - Date.now();
+  return Math.max(0, t);
+}
 
-  const segments = useMemo(
-    () => SEGMENTS.map((s, i) => ({ label: s.label, color: COLORS[i % COLORS.length] })),
-    []
-  )
+export default function Home() {
+  const [fid, setFid] = useState<string>('');
+  const [result, setResult] = useState<SpinResp | null>(null);
+  const [cooldownMs, setCooldownMs] = useState<number>(0);
+  const [spinTrigger, setSpinTrigger] = useState(0);
+  const canSpin = useMemo(() => fid && cooldownMs === 0, [fid, cooldownMs]);
 
-  const centerAngles = useMemo(() => {
-    const slice = 360 / SEGMENTS.length
-    return SEGMENTS.map((_, i) => i * slice + slice / 2)
-  }, [])
+  useEffect(() => {
+    if (!result?.nextSpinAt) return;
+    const tick = () => setCooldownMs(msUntil(result.nextSpinAt));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [result?.nextSpinAt]);
 
-  async function handleSpin() {
-    setError(null)
-    if (!fid.trim()) return setError('Entre un FID')
+  const doSpin = useCallback(async () => {
+    if (!fid) return;
     try {
-      setSpinning(true)
-      const res = await fetch('/api/spin', {
+      const r = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fid: Number(fid) }),
-      })
-      if (!res.ok) throw new Error('Server error')
-      const data: SpinResult = await res.json()
-      setResult(data)
-
-      const idx = SEGMENTS.findIndex((s) => s.id === data.task.id)
-      const targetCenter = centerAngles[idx]
-      const turns = 5
-      // pointeur en haut (0°), on doit amener le centre du segment sous le pointeur
-      const final = turns * 360 + (360 - targetCenter)
-      setAngle(final)
-    } catch (e: any) {
-      setError(e.message ?? 'Erreur')
-    } finally {
-      // laisser la transition se jouer
-      setTimeout(() => setSpinning(false), 4300)
+        body: JSON.stringify({ fid }),
+      });
+      if (!r.ok) throw new Error('spin failed');
+      const data: SpinResp = await r.json();
+      setResult(data);
+      setSpinTrigger(x => x + 1);
+    } catch (e) {
+      console.error(e);
+      alert('Erreur serveur');
     }
-  }
+  }, [fid]);
+
+  const winningId = result?.task?.id ?? null;
+  const displayTask = winningId ? TASKS.find(t => t.id === winningId) : null;
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">DailyWheel</h1>
+    <main className="max-w-md mx-auto px-4 py-6 space-y-6">
+      <h1 className="text-3xl font-bold text-center">DailyWheel</h1>
 
-      <div className="mb-6 flex flex-col items-center gap-4">
-        <Wheel segments={segments} angle={angle} spinning={spinning} />
-      </div>
-
-      <label className="mb-2 block text-sm text-zinc-400">FID</label>
-      <input
-        className="mb-4 w-full rounded-lg border border-zinc-700/60 bg-zinc-800/40 px-3 py-3 outline-none"
-        placeholder="ex: 1234"
-        value={fid}
-        onChange={(e) => setFid(e.target.value)}
-        inputMode="numeric"
+      <Wheel
+        segments={TASKS}
+        winningId={winningId}
+        spinTrigger={spinTrigger}
       />
 
-      <button
-        className="mb-6 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-60"
-        onClick={handleSpin}
-        disabled={spinning}
-      >
-        {spinning ? 'Spinning…' : 'Spin'}
-      </button>
+      <div className="space-y-3">
+        <label className="text-sm font-medium block">FID</label>
+        <input
+          className="w-full rounded-md border border-gray-300 px-3 py-2"
+          placeholder="ex: 1234"
+          value={fid}
+          onChange={(e) => setFid(e.target.value)}
+        />
+        <button
+          onClick={doSpin}
+          disabled={!canSpin}
+          className={`w-full rounded-md px-4 py-3 text-white ${canSpin ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
+        >
+          Spin
+        </button>
+      </div>
 
-      {error && <p className="mb-3 text-red-400">{error}</p>}
-
-      {result && (
-        <div className="space-y-2 rounded-xl border border-zinc-700/60 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-zinc-400">Prochain spin</span>
-            <time className="tabular-nums">
-              {new Date(result.nextSpinAt).toLocaleTimeString()}
-            </time>
-          </div>
-          <h2 className="text-xl font-semibold">{result.task.label}</h2>
-          <a
-            href={result.task.url}
-            target="_blank"
-            className="inline-block rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white"
-          >
-            Ouvrir la tâche
-          </a>
+      <div className="border-t pt-4 space-y-2">
+        <div className="text-sm text-gray-600">
+          Prochain spin&nbsp;{cooldownMs === 0 ? 'disponible' : new Date(cooldownMs).toISOString().slice(11, 19)}
         </div>
-      )}
+
+        {displayTask && (
+          <div className="space-y-2">
+            <div className="text-lg font-semibold">{displayTask.label}</div>
+            <a
+              href={displayTask.url}
+              target="_blank"
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-white"
+            >
+              Ouvrir la tâche
+            </a>
+          </div>
+        )}
+      </div>
     </main>
-  )
+  );
 }
