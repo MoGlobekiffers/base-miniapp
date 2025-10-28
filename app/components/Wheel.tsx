@@ -1,8 +1,7 @@
 'use client'
 import React from 'react'
 
-type Segment = { id: string; label: string }
-
+type Segment = { label: string; color: string }
 export default function Wheel({
   segments,
   angle,
@@ -12,57 +11,34 @@ export default function Wheel({
   angle: number
   spinning: boolean
 }) {
-  const colors = [
-    '#3b82f6','#10b981','#f59e0b','#ef4444',
-    '#8b5cf6','#06b6d4','#22c55e','#eab308'
-  ]
-  const stops = segments
-    .map((_, i) => {
-      const start = (360 / segments.length) * i
-      const end = (360 / segments.length) * (i + 1)
-      const c = colors[i % colors.length]
-      return `${c} ${start}deg ${end}deg`
-    })
-    .join(', ')
+  const step = 100 / segments.length
+  let acc = 0
+  const stops: string[] = []
+  for (const s of segments) {
+    const from = acc
+    const to = acc + step
+    stops.push(`${s.color} ${from}% ${to}%`)
+    acc = to
+  }
+  const bg = `conic-gradient(${stops.join(',')})`
+
   return (
-    <div className="relative w-64 h-64 mx-auto">
+    <div className="relative flex items-center justify-center">
+      {/* pointeur */}
+      <div className="absolute -top-3 z-10 h-0 w-0 border-l-8 border-r-8 border-b-[14px] border-l-transparent border-r-transparent border-b-emerald-500" />
+      {/* roue */}
       <div
-        className="absolute inset-0 rounded-full border border-black/10 shadow-lg"
+        className="rounded-full border-4 border-zinc-800/30"
         style={{
-          background: `conic-gradient(${stops})`,
+          width: 280,
+          height: 280,
+          background: bg,
           transform: `rotate(${angle}deg)`,
-          transition: spinning ? 'transform 4.2s cubic-bezier(0.17,0.67,0.2,1)' : 'none',
+          transition: spinning ? 'transform 4.2s cubic-bezier(0.22, 0.7, 0, 1)' : undefined,
         }}
-        aria-label="wheel"
       />
-      <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-        <div className="w-0 h-0 border-l-8 border-r-8 border-b-[14px] border-l-transparent border-r-transparent border-b-emerald-500 drop-shadow" />
-      </div>
-      <div className="absolute inset-0">
-        {segments.map((s, i) => {
-          const mid = (360 / segments.length) * (i + 0.5)
-          const r = (mid * Math.PI) / 180
-          const radius = 100
-          const x = 128 + radius * Math.sin(r)
-          const y = 128 - radius * Math.cos(r)
-          return (
-            <span
-              key={s.id}
-              className="absolute text-xs font-medium select-none"
-              style={{
-                left: x,
-                top: y,
-                transform: `translate(-50%,-50%) rotate(${mid}deg)`,
-              }}
-            >
-              <span className="block -rotate-90 bg-white/80 px-2 py-0.5 rounded">
-                {s.label}
-              </span>
-            </span>
-          )
-        })}
-      </div>
-      <div className="absolute inset-0 rounded-full border-4 border-white pointer-events-none" />
+      {/* moyeu */}
+      <div className="absolute h-10 w-10 rounded-full border-2 border-white/40 bg-white/80 backdrop-blur" />
     </div>
   )
 }
