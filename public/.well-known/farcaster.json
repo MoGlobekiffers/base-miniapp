@@ -7,15 +7,11 @@
   "splashImageUrl": "https://placehold.co/200x200/png",
   "splashBackgroundColor": "#111111",
   "primaryCategory": "utility",
-  "tags": ["demo", "base", "miniapp"],
+  "tags": ["demo","base","miniapp"],
 
   "publisher": "Your Name",
   "description": "Miniapp de test avec endpoints healthz/ready",
 
-  /* compat: certaines implémentations lisent encore 'homepageUrl' */
-  "homepageUrl": "https://base-miniapp-gamma.vercel.app/embed",
-
-  /* conserve ton association de compte telle quelle */
   "accountAssociation": {
     "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
