@@ -5,11 +5,14 @@ const ORIGIN = 'https://base-miniapp-gamma.vercel.app';
 
 export async function GET() {
   const body = {
+    // ---- account association (root) ----
     accountAssociation: {
-      header: "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
+      header: "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDZjNjA3NDRENjlmOTI2YzRiODhEMzBmMzU5QzgxM2IzREU3YzRCNjgifQ",
       payload: "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
-      signature: "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOlYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
+      signature: "JNgA4IsSYwoOkRKvFILtxQv3I6jamuHDGQFy6u+K3uEbSuQiO8hD5Q+ZveuZRzO6wU4TUZ4WjpqV2gB+KywtXBw="
     },
+
+    // ---- miniapp metadata (what Base Build reads) ----
     miniapp: {
       version: "1",
       name: "DailyWheel",
