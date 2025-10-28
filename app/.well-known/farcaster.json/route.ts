@@ -12,8 +12,6 @@ export async function GET() {
     splashBackgroundColor: "#111111",
     primaryCategory: "utility",
     tags: ["daily", "wheel", "base"],
-    subtitle: "Mini app roulette",
-    description: "Spin the wheel once a day on Base.",
     accountAssociation: {
       header: "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
       payload: "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
@@ -23,10 +21,10 @@ export async function GET() {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-      'Pragma': 'no-cache',
-      'Access-Control-Allow-Origin': '*'
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Pragma": "no-cache",
+      "Access-Control-Allow-Origin": "*"
     }
   });
 }
