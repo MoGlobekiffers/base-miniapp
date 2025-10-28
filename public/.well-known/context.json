@@ -1,0 +1,6 @@
+{
+  "user": { "fid": 0 },
+  "location": { "type": "launcher" },
+  "client": { "platformType": "web", "clientFid": 9152, "added": false },
+  "features": { "haptics": false }
+}
