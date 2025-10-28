@@ -1,13 +1,13 @@
 {
   "name": "Base Miniapp",
-  "version": "next",
-  "iconUrl": "https://placehold.co/512x512/png",
-  "imageUrl": "https://placehold.co/1200x800/png",
+  "version": "1",
+  "iconUrl": "https://placehold.co/1024x1024/png?bg=111111&text=ICON",
+  "imageUrl": "https://placehold.co/1200x800/png?bg=111111&text=PREVIEW",
   "homeUrl": "https://base-miniapp-gamma.vercel.app/embed",
-  "splashImageUrl": "https://placehold.co/200x200/png",
+  "splashImageUrl": "https://placehold.co/200x200/png?bg=111111&text=BASE",
   "splashBackgroundColor": "#111111",
   "primaryCategory": "utility",
-  "tags": ["demo", "base", "miniapp"],
+  "tags": ["demo","base","miniapp"],
   "publisher": "Your Name",
   "description": "Miniapp de test avec endpoints healthz/ready",
   "accountAssociation": {
