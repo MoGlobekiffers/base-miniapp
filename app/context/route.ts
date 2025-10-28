@@ -3,6 +3,7 @@ export const preferredRegion = ['iad1'];
 export const revalidate = 0;
 
 const body = JSON.stringify({
+  ready: true,                         // <— important pour la console
   user: { fid: 0 },
   location: { type: 'launcher' },
   client: { platformType: 'web', clientFid: 9152, added: false },
@@ -18,9 +19,7 @@ const baseHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
-export async function GET() {
-  return new Response(body, { status: 200, headers: baseHeaders });
-}
+export async function GET() { return new Response(body, { status: 200, headers: baseHeaders }); }
 export async function HEAD() { return GET(); }
 export async function OPTIONS() {
   const h = { ...baseHeaders }; delete (h as any)['Content-Type'];
