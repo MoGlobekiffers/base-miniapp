@@ -1,7 +1,8 @@
 export const runtime = 'edge'
+export const preferredRegion = ['iad1']
 
 export async function GET() {
-  return new Response(JSON.stringify({ status: 'ok' }), {
+  return new Response(JSON.stringify({ ready: true }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
