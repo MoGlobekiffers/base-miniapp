@@ -12,7 +12,7 @@ export async function GET() {
     splashBackgroundColor: "#111111",
     primaryCategory: "utility",
     tags: ["daily", "wheel", "base"],
-    publisher: "Globekiffers",
+    subtitle: "Mini app roulette",
     description: "Spin the wheel once a day on Base.",
     accountAssociation: {
       header: "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
@@ -20,12 +20,10 @@ export async function GET() {
       signature: "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
     }
   };
-
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
-      // pas de cache pour que Base Build voie toujours la dernière version
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Access-Control-Allow-Origin': '*'
