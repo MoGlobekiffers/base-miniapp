@@ -9,15 +9,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: miniapp.description,
     other: {
       'fc:miniapp': JSON.stringify({
-        version: miniapp.version,
+        version: miniapp.version,                 // <-- "1"
         imageUrl: miniapp.heroImageUrl,
         button: {
           title: `Open ${miniapp.name}`,
-          action: {
-            type: 'launch_frame',
-            url: miniapp.homeUrl,
-            name: miniapp.name,
-          },
+          action: { type: 'launch_frame', url: miniapp.homeUrl, name: miniapp.name },
         },
       }),
     },
@@ -25,9 +21,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+  return (<html lang="en"><body>{children}</body></html>);
 }
