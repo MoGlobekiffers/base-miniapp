@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     other: {
       'fc:miniapp': JSON.stringify({
         version: miniapp.version,
-        imageUrl: miniapp.heroImageUrl, // ratio 3:2 recommandé
+        imageUrl: miniapp.heroImageUrl,
         button: {
           title: `Open ${miniapp.name}`,
           action: {
