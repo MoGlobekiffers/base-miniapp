@@ -5,19 +5,17 @@ export const revalidate = 0;
 import { corsHeaders } from '../../lib/cors';
 
 const payload = {
+  version: 'next',
   ready: true,
   name: 'Base Miniapp',
   description: 'Miniapp de test',
-  homepageUrl: 'https://base-miniapp-gamma.vercel.app',
+  homeUrl: 'https://base-miniapp-gamma.vercel.app',
   iconUrl: 'https://placehold.co/512x512/png',
-  imageUrl: 'https://placehold.co/1200x630/png'
+  imageUrl: 'https://placehold.co/1200x800/png'
 };
 
 export async function GET() {
-  return new Response(JSON.stringify(payload), {
-    status: 200,
-    headers: corsHeaders(),
-  });
+  return new Response(JSON.stringify(payload), { status: 200, headers: corsHeaders() });
 }
 export async function HEAD() { return GET(); }
 export async function OPTIONS() {
