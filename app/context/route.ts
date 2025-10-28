@@ -2,22 +2,27 @@ export const runtime = 'edge';
 export const preferredRegion = ['iad1'];
 export const revalidate = 0;
 
-import { corsHeaders } from '../lib/cors';
-
-const payload = {
-  version: 'next',
-  ready: true,
-  name: 'Base Miniapp',
-  description: 'Miniapp de test',
-  homeUrl: 'https://base-miniapp-gamma.vercel.app',
-  iconUrl: 'https://placehold.co/512x512/png',
-  imageUrl: 'https://placehold.co/1200x800/png' // 3:2
-};
-
 export async function GET() {
-  return new Response(JSON.stringify(payload), { status: 200, headers: corsHeaders() });
+  return new Response('{"ready":true}', {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,HEAD,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 export async function HEAD() { return GET(); }
 export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: corsHeaders({ Allow: 'GET,HEAD,OPTIONS' }) });
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,HEAD,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
