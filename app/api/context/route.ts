@@ -1,6 +1,6 @@
-export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+export const preferredRegion = ['iad1'];
 export const revalidate = 0;
-// export const runtime = 'edge';
 
 import { corsHeaders } from '../../lib/cors';
 
@@ -14,7 +14,10 @@ const payload = {
 };
 
 export async function GET() {
-  return new Response(JSON.stringify(payload), { status: 200, headers: corsHeaders() });
+  return new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: corsHeaders(),
+  });
 }
 export async function HEAD() { return GET(); }
 export async function OPTIONS() {
