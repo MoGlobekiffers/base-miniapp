@@ -1,18 +1,16 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/** ===== Réglages ===== */
+/** Réglages */
 const SEGMENTS = 12;
 const A = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 15;         // pointe vers le CENTRE du segment
-const CX = 500, CY = 500;              // centre SVG
-const R_OUT = 470;                     // rayon extérieur (bord)
-const R_IN  = 140;                     // rayon moyeu
-const R_LABEL_START = R_IN + 16;       // départ du texte radial
-const R_LABEL_END   = R_OUT - 70;      // fin du texte radial
-const FONT_SIZE = 22;                  // taille caractères radiaux
+const POINTER_OFFSET_DEG = 15;              // centre du segment sous le pointeur
+const CX = 500, CY = 500;
+const R_OUT = 470;                           // bord extérieur
+const R_IN  = 140;                           // moyeu
+const R_TEXT = 365;                          // rayon du texte (proche du bord)
+const FONT_SIZE = 26;                        // taille du texte sur l’arc
 
-/** Quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -27,17 +25,15 @@ const QUESTS = [
   "Inviter 1 ami",
   "Bonus mystère"
 ];
-
-/** Couleurs */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-/** ===== Utils géométrie (stabilisés pour éviter l’erreur d’hydratation) ===== */
+/** Utils géométrie (arrondis stables => pas d’erreur d’hydratation) */
 const r = (n:number) => Number(n.toFixed(3));
-const d2r = (d:number) => (Math.PI/180) * d;
+const d2r = (d:number) => (Math.PI/180)*d;
 function P(deg:number, RR:number){
   const a = d2r(deg - 90);
   return { x: r(CX + RR*Math.cos(a)), y: r(CY + RR*Math.sin(a)) };
@@ -54,7 +50,6 @@ function wedgePath(Ro:number, Ri:number, a0:number, a1:number){
   return `M ${o0.x} ${o0.y} A ${Ro} ${Ro} 0 ${large} 1 ${o1.x} ${o1.y} L ${i1.x} ${i1.y} A ${Ri} ${Ri} 0 ${large} 0 ${i0.x} ${i0.y} Z`;
 }
 
-/** ===== Page ===== */
 export default function WheelPage(){
   const [fid, setFid] = useState("");
   const [angle, setAngle] = useState(0);
@@ -63,7 +58,6 @@ export default function WheelPage(){
   const [cooldown, setCooldown] = useState(0);
   const target = useRef(0);
 
-  // Cooldown (localStorage par FID) — calculé côté client
   useEffect(() => {
     const tick = () => {
       if (!fid) return setCooldown(0);
@@ -161,7 +155,7 @@ export default function WheelPage(){
             {/* Fond */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="#0f172a" opacity="0.25"/>
 
-            {/* Groupe qui TOURNE (segments + labels) */}
+            {/* Groupe qui TOURNE */}
             <g
               style={{
                 transformBox: "fill-box",
@@ -180,42 +174,35 @@ export default function WheelPage(){
                 <path key={`sep-${s.i}`} d={arcPath(R_OUT, s.a0, s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>
               ))}
 
-              {/* Labels RADIAUX (un caractère tous les X px du centre vers l'extérieur) */}
-              {segments.map((s) => {
-                const chars = s.label.split("");
-                const steps = Math.max(chars.length - 1, 1);
-                const dr = (R_LABEL_END - R_LABEL_START) / steps;
+              {/* Défs des ARCS de texte (lecture sur l’arc, bien lisible) */}
+              <defs>
+                {segments.map(s=>{
+                  // arc couvrant ~90% du secteur pour laisser un peu de marge
+                  const span = A * 0.9;
+                  const aStart = s.mid - span/2;
+                  const aEnd   = s.mid + span/2;
+                  return <path id={`arc-${s.i}`} key={`arcdef-${s.i}`} d={arcPath(R_TEXT, aStart, aEnd)} />;
+                })}
+              </defs>
 
-                // Groupe pivoté sur l'angle médian → l’axe Y du groupe est le rayon
-                return (
-                  <g key={`lab-${s.i}`} transform={`rotate(${r(s.mid)} ${CX} ${CY})`}>
-                    {chars.map((ch, k) => {
-                      const rr = R_LABEL_START + dr * k;
-                      return (
-                        <text
-                          key={k}
-                          x={CX}
-                          y={r(CY - rr)}
-                          fontSize={FONT_SIZE}
-                          fontWeight={700}
-                          fill="#fff"
-                          textAnchor="middle"
-                          style={{
-                            paintOrder: "stroke",
-                            stroke: "rgba(0,0,0,0.65)",
-                            strokeWidth: 6
-                          }}
-                        >
-                          {ch}
-                        </text>
-                      );
-                    })}
-                  </g>
-                );
-              })}
+              {/* Libellés sur arc, centrés */}
+              {segments.map(s => (
+                <text
+                  key={`txt-${s.i}`}
+                  fontSize={FONT_SIZE}
+                  fontWeight={800}
+                  fill="#fff"
+                  textAnchor="middle"
+                  style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.7)", strokeWidth: 6 }}
+                >
+                  <textPath href={`#arc-${s.i}`} startOffset="50%">
+                    {s.label}
+                  </textPath>
+                </text>
+              ))}
             </g>
 
-            {/* Bord + moyeu (fixes) */}
+            {/* Bord + moyeu fixes */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="none" stroke="#0f172a" strokeWidth="16" opacity="0.6"/>
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
