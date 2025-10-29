@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 const SEGMENTS = 12;
 const SEGMENT_ANGLE = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 15; // centre du segment sous le pointeur
+const POINTER_OFFSET_DEG = 15;
 
 const QUESTS = [
   "Check-in quotidien",
@@ -107,9 +107,8 @@ export default function WheelPage(){
           {fid ? (cooldown>0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
         </div>
 
-        {/* Zone roue */}
         <div className="relative w-full max-w-[560px] mx-auto aspect-square">
-          {/* Pointeur au-dessus */}
+          {/* Pointeur */}
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-40">
             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M28 8L38 28H18L28 8Z" fill="#2563eb" stroke="#0b1220" strokeWidth="4"/>
@@ -123,7 +122,7 @@ export default function WheelPage(){
             <div className="w-16 h-16 rounded-full bg-[#0f172a] ring-8 ring-zinc-200/80 shadow-xl" />
           </div>
 
-          {/* Roue qui tourne (segments + labels radiaux) */}
+          {/* Roue qui tourne (segments + labels) */}
           <div
             className="absolute inset-0 rounded-full overflow-hidden z-0"
             style={{
@@ -137,34 +136,40 @@ export default function WheelPage(){
             <div className="absolute inset-0" style={{background:conicFromColors(COLORS)}} />
             <div className="absolute inset-0" style={{background:"repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)"}} />
 
-            {/* Labels radiaux (dans le conteneur qui TOURNE) */}
-            <div className="absolute inset-0 z-20 pointer-events-none">
-              {LABELS.map((txt,i)=>{
-                const mid=i*SEGMENT_ANGLE+SEGMENT_ANGLE/2;
-                return (
+            {/* Labels : horizontaux, centrés dans chaque secteur, tournent avec la roue */}
+            {LABELS.map((txt,i)=>{
+              const mid=i*SEGMENT_ANGLE+SEGMENT_ANGLE/2;
+              return (
+                <div
+                  key={i}
+                  className="absolute top-1/2 left-1/2 z-20 pointer-events-none"
+                  style={{
+                    transform:`rotate(${mid}deg) translate(0, -44%)`, // place au bon rayon
+                    transformOrigin:"0 0"
+                  }}
+                >
                   <div
-                    key={i}
-                    className="absolute top-1/2 left-1/2 text-white font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
+                    className="text-white font-semibold text-center whitespace-normal"
                     style={{
-                      transform:`rotate(${mid}deg) translate(0,-40%)`,
-                      transformOrigin:"0 0",
-                      width:"0",
-                      writingMode:"vertical-rl" as any,
-                      textOrientation:"upright" as any,
-                      fontSize:"12px",
-                      lineHeight: "1.1",
-                      letterSpacing: "1px",
-                      textAlign:"center"
+                      transform:`rotate(${-mid}deg) translateX(-50%)`, // remet le texte horizontal + centrage
+                      width:"34%",                                   // largeur proportionnelle à l'arc visible
+                      fontSize:"clamp(11px, 1.3vw, 15px)",
+                      lineHeight:1.1,
+                      textShadow:"0 2px 6px rgba(0,0,0,0.7)"
                     }}
                     title={txt}
                   >
                     {txt}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        <p className="text-center text-white/50 text-xs mt-6">
+          Ajuste le rayon: change <code>translate(0, -44%)</code> (42–48%). Ajuste largeur: <code>width</code> (30–38%).
+        </p>
       </div>
     </main>
   );
