@@ -10,11 +10,11 @@ const CX = 500, CY = 500;
 const R_OUT = 470;
 const R_IN  = 140;
 
-/* Texte radial (chemin droit extérieur→intérieur) */
-const R_LABEL_OUT = R_OUT - 26;   // départ du texte (près du bord)
-const R_LABEL_IN  = R_IN  + 24;   // fin du texte (près du moyeu)
-const FONT_SIZE   = 22;           // taille texte
-const STROKE_W    = 6;            // contour blanc/noir pour lisibilité
+/* Texte radial (ext -> int) */
+const R_LABEL_OUT = R_OUT - 26;
+const R_LABEL_IN  = R_IN  + 24;
+const FONT_SIZE   = 26;   // <- plus grand
+const STROKE_W    = 6;
 
 const QUESTS = [
   "Check-in quotidien",
@@ -36,7 +36,7 @@ const COLORS = [
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-/* Utils (arrondis -> pas d’erreur d’hydratation) */
+/* Utils (arrondis stables) */
 const r=(n:number)=>Number(n.toFixed(3));
 const d2r=(d:number)=>(Math.PI/180)*d;
 function P(deg:number, RR:number){ const a=d2r(deg-90); return {x:r(CX+RR*Math.cos(a)), y:r(CY+RR*Math.sin(a))}; }
@@ -82,8 +82,12 @@ export default function WheelPage(){
         </div>
 
         <div className="relative w-full max-w-[560px] mx-auto">
-          <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-40">
-            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 8L38 28H18L28 8Z" fill="#2563eb" stroke="#0b1220" strokeWidth="4"/></svg>
+          {/* Flèche BLEUE pointant VERS le centre */}
+          <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 z-40">
+            <svg width="64" height="40" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg">
+              <!-- pointe en bas = vers le centre -->
+              <path d="M32 36 L50 8 H14 Z" fill="#2563eb" stroke="#0b1220" strokeWidth="6" strokeLinejoin="round"/>
+            </svg>
           </div>
 
           <svg viewBox="0 0 1000 1000" className="w-full h-auto block">
@@ -93,7 +97,7 @@ export default function WheelPage(){
               {segments.map(s=> <path key={`w-${s.i}`} d={wedgePath(R_OUT,R_IN,s.a0,s.a1)} fill={s.color}/>)}
               {segments.map(s=> <path key={`sep-${s.i}`} d={arcPath(R_OUT,s.a0,s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>)}
 
-              {/* Chemins radiaux (ext -> int) et texte centré dessus */}
+              {/* Chemins radiaux (ext -> int) */}
               <defs>
                 {segments.map(s=>{
                   const pOut = P(s.mid, R_LABEL_OUT);
@@ -102,14 +106,13 @@ export default function WheelPage(){
                 })}
               </defs>
 
+              {/* Texte radial centré */}
               {segments.map(s=>(
                 <g key={`txt-${s.i}`}>
-                  {/* halo sombre pour lisibilité */}
-                  <text fontSize={FONT_SIZE} fontWeight={800} fill="#000" opacity="0.65" textAnchor="middle" style={{paintOrder:"stroke",stroke:"#000",strokeWidth:STROKE_W}}>
+                  <text fontSize={FONT_SIZE} fontWeight={900} fill="#000" opacity="0.65" textAnchor="middle" style={{paintOrder:"stroke",stroke:"#000",strokeWidth:STROKE_W}}>
                     <textPath href={`#rad-${s.i}`} startOffset="50%" method="align" spacing="auto">{s.label}</textPath>
                   </text>
-                  {/* texte blanc par-dessus */}
-                  <text fontSize={FONT_SIZE} fontWeight={800} fill="#fff" textAnchor="middle">
+                  <text fontSize={FONT_SIZE} fontWeight={900} fill="#fff" textAnchor="middle">
                     <textPath href={`#rad-${s.i}`} startOffset="50%" method="align" spacing="auto">{s.label}</textPath>
                   </text>
                 </g>
@@ -120,10 +123,6 @@ export default function WheelPage(){
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
         </div>
-
-        <p className="text-center text-white/50 text-xs mt-6">
-          Tweaks rapides : <code>FONT_SIZE</code> (20–26), <code>R_LABEL_OUT</code>/<code>R_LABEL_IN</code> (±10) pour centrer visuellement le texte dans l’anneau.
-        </p>
       </div>
     </main>
   );
