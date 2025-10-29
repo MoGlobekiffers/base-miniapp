@@ -1,110 +1,155 @@
-'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+'use client';
 
-type Task = { id:string; label:string; url:string }
-type SpinResponse = { task: Task; nextSpinAt: string }
+import { useEffect, useMemo, useRef, useState } from 'react';
+import miniapp from '@farcaster/miniapp-sdk';
+import confetti from 'canvas-confetti';
 
-function useCountdown(targetISO?: string) {
-  const [now, setNow] = useState<number>(() => Date.now())
-  useEffect(() => { const t = setInterval(()=>setNow(Date.now()), 1000); return ()=>clearInterval(t) }, [])
-  const diff = useMemo(() => targetISO ? Math.max(0, new Date(targetISO).getTime() - now) : 0, [now, targetISO])
-  const h = Math.floor(diff/36e5), m = Math.floor((diff%36e5)/6e4), s = Math.floor((diff%6e4)/1e3)
-  return { h, m, s, finished: diff<=0 }
-}
+type Task = { id: string; label: string; url: string };
 
-export default function Page() {
-  const [fid, setFid] = useState<string>('12')
-  const [spinning, setSpinning] = useState(false)
-  const [result, setResult] = useState<Task | null>(null)
-  const [nextSpinAt, setNextSpinAt] = useState<string | undefined>(undefined)
-  const { h, m, s, finished } = useCountdown(nextSpinAt)
-  const wheelRef = useRef<HTMLDivElement>(null)
+const TASKS: Task[] = [
+  { id: 'quest',         label: 'Quest',          url: 'https://guild.xyz' },
+  { id: 'daily-log',     label: 'Daily log',      url: 'https://warpcast.com/compose' },
+  { id: 'recast',        label: 'Recast',         url: 'https://warpcast.com/~/search?q=' },
+  { id: 'like-cast',     label: 'Like a cast',    url: 'https://warpcast.com/~/search?q=' },
+  { id: 'contribute',    label: 'Contribute repo',url: 'https://github.com/MoGlobekiffers/base-miniapp' },
+  { id: 'follow-base',   label: 'Follow Base',    url: 'https://warpcast.com/base' },
+];
 
-  async function spin() {
-    setResult(null)
-    setSpinning(true)
-    // anime la roue (rotation CSS)
-    const node = wheelRef.current
-    if (node) {
-      const turns = 6 + Math.floor(Math.random()*3)
-      node.style.transition = 'transform 2.2s cubic-bezier(.22,.6,.28,1.2)'
-      node.style.transform = `rotate(${turns*360}deg)`
-    }
+const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+
+export default function Home() {
+  const [fid, setFid] = useState<string>('');
+  const [spinning, setSpinning] = useState(false);
+  const [nextSpinAt, setNextSpinAt] = useState<string | null>(null);
+  const [result, setResult] = useState<Task | null>(null);
+
+  const canSpin = useMemo(() => !spinning && (!nextSpinAt || new Date(nextSpinAt) <= new Date()), [spinning, nextSpinAt]);
+
+  // Auto-détection du FID via miniapp SDK (si dans Base App)
+  useEffect(() => {
+    (async () => {
+      try {
+        await miniapp.ready();
+        // @ts-ignore – certains bundles exposent user().fid ou context().fid
+        const sdkFid = miniapp.user?.fid ?? miniapp.context?.fid;
+        if (sdkFid && !fid) setFid(String(sdkFid));
+      } catch {
+        // hors Base App : on laisse le champ FID manuel
+      }
+    })();
+  }, [fid]);
+
+  // Charger “prochain spin” local (fausse persistance)
+  useEffect(() => {
+    const k = localStorage.getItem('dw:next:' + dayKey());
+    if (k) setNextSpinAt(k);
+  }, []);
+
+  // Animation confetti
+  const fireConfetti = () => {
+    const end = Date.now() + 600;
+    const frame = () => {
+      confetti({ particleCount: 20, startVelocity: 35, spread: 50, origin: { y: 0.3 } });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  };
+
+  const onSpin = async () => {
+    if (!fid || !canSpin) return;
+    setSpinning(true);
+    setResult(null);
+
     try {
       const res = await fetch('/api/spin', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ fid: Number(fid) || 0 })
-      })
-      const json = await res.json() as SpinResponse | { error: string }
-      if ('task' in json) {
-        setResult(json.task)
-        setNextSpinAt(json.nextSpinAt)
-      } else {
-        alert('Erreur serveur')
-      }
-    } catch {
-      alert('Erreur serveur')
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fid: Number(fid) }),
+      });
+
+      if (!res.ok) throw new Error('server_error');
+      const data = await res.json() as { task: Task; nextSpinAt: string };
+
+      setResult(data.task);
+      setNextSpinAt(data.nextSpinAt);
+      localStorage.setItem('dw:next:' + dayKey(), data.nextSpinAt);
+
+      fireConfetti();
+    } catch (e) {
+      alert('Erreur serveur');
     } finally {
-      // remet la rotation pour l’état idle
-      setTimeout(() => {
-        const node2 = wheelRef.current
-        if (node2) {
-          node2.style.transition = 'none'
-          node2.style.transform = 'rotate(0deg)'
-        }
-        setSpinning(false)
-      }, 2300)
+      setSpinning(false);
     }
-  }
+  };
+
+  // Angle visuel aléatoire (juste pour faire tourner la roue)
+  const [angle, setAngle] = useState(0);
+  const spinVisual = () => {
+    const full = 360 * 6; // 6 tours
+    const offset = Math.floor(Math.random() * 360);
+    setAngle(full + offset);
+  };
+
+  const handleSpinClick = async () => {
+    spinVisual();
+    await onSpin();
+  };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-start gap-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">DailyWheel</h1>
+    <main className="min-h-screen bg-[#0b0f16] text-white flex flex-col items-center py-10">
+      <h1 className="text-3xl font-semibold mb-8">DailyWheel</h1>
 
-      <div className="w-full max-w-md flex flex-col items-center gap-4">
-        <label className="w-full text-sm font-medium">FID</label>
+      <div className="w-full max-w-xl px-4">
+        <label className="text-sm text-neutral-300">FID</label>
         <input
-          className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 outline-none"
+          className="w-full mt-2 mb-6 rounded-md bg-neutral-800/70 border border-neutral-700 px-3 py-2 outline-none"
           placeholder="ex: 1234"
           value={fid}
-          onChange={e=>setFid(e.target.value)}
+          onChange={(e) => setFid(e.target.value)}
+          disabled={!!fid && fid.length > 0} // auto-rempli => verrouille
         />
-      </div>
 
-      {/* Zone roue */}
-      <div className="relative w-[360px] h-[360px] select-none">
-        {/* pointeur */}
-        <img src="/wheel-pointer.svg" alt="" className="absolute left-1/2 -translate-x-1/2 -top-3 z-20 w-8 h-9" />
-        {/* roue (image de fond) */}
-        <div
-          ref={wheelRef}
-          className="absolute inset-0 rounded-full bg-center bg-no-repeat bg-contain"
-          style={{ backgroundImage: 'url(/preview-wheel.png)' }}
-          aria-hidden
-        />
-      </div>
+        <div className="relative flex flex-col items-center">
+          {/* Pointeur */}
+          <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-b-[18px] border-l-transparent border-r-transparent border-b-blue-500 mb-2" />
+          {/* Roue (image locale) */}
+          <div
+            className="w-[420px] h-[420px] rounded-full overflow-hidden"
+            style={{
+              backgroundImage: 'url(/preview-wheel.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              transform: `rotate(${angle}deg)`,
+              transition: 'transform 1.6s cubic-bezier(.2,.7,.1,1)',
+            }}
+          />
+        </div>
 
-      <button
-        onClick={spin}
-        disabled={spinning || !finished}
-        className="w-[360px] h-12 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-50"
-      >
-        {spinning ? 'Spinning…' : 'Spin'}
-      </button>
+        <button
+          onClick={handleSpinClick}
+          disabled={!canSpin || !fid}
+          className={`w-full mt-8 rounded-md py-3 text-lg font-medium ${canSpin && fid
+            ? 'bg-blue-600 hover:bg-blue-500'
+            : 'bg-neutral-700 cursor-not-allowed'}`}
+        >
+          {spinning ? 'Spinning…' : 'Spin'}
+        </button>
 
-      {/* Compte à rebours & résultat */}
-      <div className="w-[360px] mt-2">
-        <p className="text-sm text-gray-500">
-          Prochain spin {finished ? 'disponible' : `dans ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
-        </p>
+        <div className="mt-6 text-sm text-neutral-300">
+          {nextSpinAt
+            ? <>Prochain spin : <span className="font-mono">{new Date(nextSpinAt).toLocaleTimeString()}</span></>
+            : <>Prochain spin disponible</>}
+        </div>
+
         {result && (
-          <div className="mt-4 space-y-3">
-            <h3 className="text-lg font-semibold">{result.label}</h3>
+          <div className="mt-6 border border-neutral-700 rounded-lg p-4">
+            <div className="text-lg font-medium mb-2">{result.label}</div>
             <a
+              className="inline-block bg-emerald-600 hover:bg-emerald-500 rounded-md px-4 py-2"
               href={result.url}
               target="_blank"
-              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 text-white px-4 py-2"
+              rel="noreferrer"
             >
               Ouvrir la tâche
             </a>
@@ -112,5 +157,6 @@ export default function Page() {
         )}
       </div>
     </main>
-  )
+  );
 }
+

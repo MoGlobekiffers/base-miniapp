@@ -12,6 +12,8 @@
     "@coinbase/onchainkit": "^1.1.1",
     "@farcaster/miniapp-sdk": "^0.2.1",
     "@vercel/kv": "^1.0.1",
+    "@vercel/og": "^0.8.5",
+    "canvas-confetti": "^1.9.4",
     "next": "16.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
