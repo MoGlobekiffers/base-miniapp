@@ -1,10 +1,18 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/** ===== Réglages ===== */
 const SEGMENTS = 12;
-const SEGMENT_ANGLE = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 15;
+const A = 360 / SEGMENTS;
+const POINTER_OFFSET_DEG = 15;         // pointe vers le CENTRE du segment
+const CX = 500, CY = 500;              // centre SVG
+const R_OUT = 470;                     // rayon extérieur (bord)
+const R_IN  = 140;                     // rayon moyeu
+const R_LABEL_START = R_IN + 16;       // départ du texte radial
+const R_LABEL_END   = R_OUT - 70;      // fin du texte radial
+const FONT_SIZE = 22;                  // taille caractères radiaux
 
+/** Quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -20,41 +28,33 @@ const QUESTS = [
   "Bonus mystère"
 ];
 
+/** Couleurs */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-const CX = 500, CY = 500;
-const R_OUT = 470;         // bord extérieur
-const R_IN  = 140;         // moyeu (trou)
-const R_LABEL_START = R_IN + 12;   // où commence le texte (proche du centre)
-const R_LABEL_END   = R_OUT - 60;  // jusqu’où va le texte
-
-function deg2rad(d:number){ return (Math.PI/180)*d; }
-function polar(deg:number, r:number){
-  const a = deg2rad(deg-90);
-  return { x: CX + r*Math.cos(a), y: CY + r*Math.sin(a) };
+/** ===== Utils géométrie (stabilisés pour éviter l’erreur d’hydratation) ===== */
+const r = (n:number) => Number(n.toFixed(3));
+const d2r = (d:number) => (Math.PI/180) * d;
+function P(deg:number, RR:number){
+  const a = d2r(deg - 90);
+  return { x: r(CX + RR*Math.cos(a)), y: r(CY + RR*Math.sin(a)) };
 }
-function arcPath(r:number, a0:number, a1:number){
-  const p0 = polar(a0, r), p1 = polar(a1, r);
-  const large = (a1-a0) % 360 > 180 ? 1 : 0;
-  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}`;
+function arcPath(RR:number, a0:number, a1:number){
+  const p0 = P(a0, RR), p1 = P(a1, RR);
+  const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
+  return `M ${p0.x} ${p0.y} A ${RR} ${RR} 0 ${large} 1 ${p1.x} ${p1.y}`;
 }
-function wedgePath(rOut:number, rIn:number, a0:number, a1:number){
-  const o0 = polar(a0, rOut), o1 = polar(a1, rOut);
-  const i1 = polar(a1, rIn),  i0 = polar(a0, rIn);
-  const large = (a1-a0) % 360 > 180 ? 1 : 0;
-  return [
-    `M ${o0.x} ${o0.y}`,
-    `A ${rOut} ${rOut} 0 ${large} 1 ${o1.x} ${o1.y}`,
-    `L ${i1.x} ${i1.y}`,
-    `A ${rIn} ${rIn} 0 ${large} 0 ${i0.x} ${i0.y}`,
-    `Z`
-  ].join(" ");
+function wedgePath(Ro:number, Ri:number, a0:number, a1:number){
+  const o0 = P(a0, Ro), o1 = P(a1, Ro);
+  const i1 = P(a1, Ri), i0 = P(a0, Ri);
+  const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
+  return `M ${o0.x} ${o0.y} A ${Ro} ${Ro} 0 ${large} 1 ${o1.x} ${o1.y} L ${i1.x} ${i1.y} A ${Ri} ${Ri} 0 ${large} 0 ${i0.x} ${i0.y} Z`;
 }
 
+/** ===== Page ===== */
 export default function WheelPage(){
   const [fid, setFid] = useState("");
   const [angle, setAngle] = useState(0);
@@ -63,6 +63,7 @@ export default function WheelPage(){
   const [cooldown, setCooldown] = useState(0);
   const target = useRef(0);
 
+  // Cooldown (localStorage par FID) — calculé côté client
   useEffect(() => {
     const tick = () => {
       if (!fid) return setCooldown(0);
@@ -75,10 +76,18 @@ export default function WheelPage(){
     return () => clearInterval(id);
   }, [fid]);
 
-  function fmtHMS(total:number){
-    const h = Math.floor(total/3600), m = Math.floor((total%3600)/60), s = total%60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-  }
+  const segments = useMemo(() => (
+    Array.from({length: SEGMENTS}, (_, i) => ({
+      i,
+      a0: i*A,
+      a1: (i+1)*A,
+      mid: i*A + A/2,
+      color: COLORS[i % COLORS.length],
+      label: QUESTS[i] ?? `Quête ${i+1}`
+    }))
+  ), []);
+
+  function fmtHMS(t:number){ const h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`; }
   function canSpin(){
     if (!fid.trim()) return { ok:false, reason:"Entre ton FID Farcaster" };
     if (cooldown>0) return { ok:false, reason:`Prochain spin dans ${fmtHMS(cooldown)}` };
@@ -89,7 +98,7 @@ export default function WheelPage(){
     if (!gate.ok || spinning) return;
     setResult(null);
     const tours = 6*360;
-    const rand = Math.floor(Math.random()*360);
+    const rand  = Math.floor(Math.random()*360);
     target.current = angle + tours + rand;
     setSpinning(true);
     setAngle(target.current);
@@ -97,8 +106,8 @@ export default function WheelPage(){
   function onEnd(){
     const a = ((target.current % 360)+360)%360;
     const normalized = (360 - a + POINTER_OFFSET_DEG) % 360; // 0° = haut
-    const index = Math.floor(normalized / (360/12)) % 12;
-    setResult(QUESTS[index]);
+    const idx = Math.floor(normalized / A) % SEGMENTS;
+    setResult(segments[idx].label);
     setSpinning(false);
     if (fid.trim()){
       localStorage.setItem(`dw:lastSpin:${fid}`, String(Date.now()));
@@ -106,22 +115,12 @@ export default function WheelPage(){
     }
   }
 
-  const segments = useMemo(()=>(
-    Array.from({length: 12}, (_,i)=>({
-      i,
-      a0: i*(360/12),
-      a1: (i+1)*(360/12),
-      mid: i*(360/12)+(360/12)/2,
-      color: COLORS[i % COLORS.length],
-      label: QUESTS[i]
-    }))
-  ), []);
-
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl md:text-4xl font-semibold text-center mb-6">DailyWheel</h1>
 
+        {/* Contrôles */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
           <input
             value={fid}
@@ -149,6 +148,7 @@ export default function WheelPage(){
           {fid ? (cooldown>0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
         </div>
 
+        {/* ROUE */}
         <div className="relative w-full max-w-[560px] mx-auto">
           {/* Pointeur */}
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-40">
@@ -158,10 +158,10 @@ export default function WheelPage(){
           </div>
 
           <svg viewBox="0 0 1000 1000" className="w-full h-auto block">
-            {/* Anneau fond */}
+            {/* Fond */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="#0f172a" opacity="0.25"/>
 
-            {/* GROUPE QUI TOURNE */}
+            {/* Groupe qui TOURNE (segments + labels) */}
             <g
               style={{
                 transformBox: "fill-box",
@@ -175,45 +175,47 @@ export default function WheelPage(){
               {segments.map(s => (
                 <path key={`wedge-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color}/>
               ))}
-              {/* Séparateurs */}
+              {/* Séparateurs doux */}
               {segments.map(s => (
                 <path key={`sep-${s.i}`} d={arcPath(R_OUT, s.a0, s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>
               ))}
 
-              {/* LIBELLÉS EN RADIALE (tournent avec la roue) */}
+              {/* Labels RADIAUX (un caractère tous les X px du centre vers l'extérieur) */}
               {segments.map((s) => {
-                // Groupe pivoté sur l'angle médian
-                const rotate = `rotate(${s.mid} ${CX} ${CY})`;
+                const chars = s.label.split("");
+                const steps = Math.max(chars.length - 1, 1);
+                const dr = (R_LABEL_END - R_LABEL_START) / steps;
+
+                // Groupe pivoté sur l'angle médian → l’axe Y du groupe est le rayon
                 return (
-                  <g key={`lab-${s.i}`} transform={rotate}>
-                    {/* Ligne guide (optionnelle, invisible) */}
-                    {/* <line x1={CX} y1={CY} x2={CX} y2={CY - R_LABEL_END} stroke="transparent" /> */}
-                    <text
-                      x={CX}
-                      y={CY - R_LABEL_START}
-                      fill="#fff"
-                      fontSize="22"
-                      fontWeight={700}
-                      textAnchor="middle"
-                      style={{
-                        // Texte vertical orienté "upright", puis la rotation du groupe l'aligne sur le rayon
-                        writingMode: "vertical-rl",
-                        textOrientation: "upright",
-                        paintOrder: "stroke",
-                        stroke: "rgba(0,0,0,0.6)",
-                        strokeWidth: 6,
-                        letterSpacing: "2px",
-                      }}
-                    >
-                      {/* On tronque pour rester dans l’arc utile */}
-                      {s.label}
-                    </text>
+                  <g key={`lab-${s.i}`} transform={`rotate(${r(s.mid)} ${CX} ${CY})`}>
+                    {chars.map((ch, k) => {
+                      const rr = R_LABEL_START + dr * k;
+                      return (
+                        <text
+                          key={k}
+                          x={CX}
+                          y={r(CY - rr)}
+                          fontSize={FONT_SIZE}
+                          fontWeight={700}
+                          fill="#fff"
+                          textAnchor="middle"
+                          style={{
+                            paintOrder: "stroke",
+                            stroke: "rgba(0,0,0,0.65)",
+                            strokeWidth: 6
+                          }}
+                        >
+                          {ch}
+                        </text>
+                      );
+                    })}
                   </g>
                 );
               })}
             </g>
 
-            {/* Bord + moyeu fixes */}
+            {/* Bord + moyeu (fixes) */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="none" stroke="#0f172a" strokeWidth="16" opacity="0.6"/>
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
