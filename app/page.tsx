@@ -1,99 +1,110 @@
-'use client';
+'use client'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Wheel from './components/Wheel';
+type Task = { id:string; label:string; url:string }
+type SpinResponse = { task: Task; nextSpinAt: string }
 
-type SpinResp = { task: { id: string; label: string; url: string }; nextSpinAt: string };
-
-const TASKS = [
-  { id: 'daily-log', label: 'Daily log', url: 'https://warpcast.com/compose', color: '#fde047' },
-  { id: 'contrib', label: 'Contribute repo', url: 'https://github.com/MoGlobekiffers/base-miniapp', color: '#86efac' },
-  { id: 'follow', label: 'Follow Base', url: 'https://warpcast.com/base', color: '#93c5fd' },
-  { id: 'like', label: 'Like a cast', url: 'https://warpcast.com/', color: '#fca5a5' },
-  { id: 'recast', label: 'Recast', url: 'https://warpcast.com/', color: '#ddd6fe' },
-  { id: 'quest', label: 'Quest', url: 'https://guild.xyz', color: '#a7f3d0' },
-];
-
-function msUntil(iso: string) {
-  const t = new Date(iso).getTime() - Date.now();
-  return Math.max(0, t);
+function useCountdown(targetISO?: string) {
+  const [now, setNow] = useState<number>(() => Date.now())
+  useEffect(() => { const t = setInterval(()=>setNow(Date.now()), 1000); return ()=>clearInterval(t) }, [])
+  const diff = useMemo(() => targetISO ? Math.max(0, new Date(targetISO).getTime() - now) : 0, [now, targetISO])
+  const h = Math.floor(diff/36e5), m = Math.floor((diff%36e5)/6e4), s = Math.floor((diff%6e4)/1e3)
+  return { h, m, s, finished: diff<=0 }
 }
 
-export default function Home() {
-  const [fid, setFid] = useState<string>('');
-  const [result, setResult] = useState<SpinResp | null>(null);
-  const [cooldownMs, setCooldownMs] = useState<number>(0);
-  const [spinTrigger, setSpinTrigger] = useState(0);
-  const canSpin = useMemo(() => fid && cooldownMs === 0, [fid, cooldownMs]);
+export default function Page() {
+  const [fid, setFid] = useState<string>('12')
+  const [spinning, setSpinning] = useState(false)
+  const [result, setResult] = useState<Task | null>(null)
+  const [nextSpinAt, setNextSpinAt] = useState<string | undefined>(undefined)
+  const { h, m, s, finished } = useCountdown(nextSpinAt)
+  const wheelRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!result?.nextSpinAt) return;
-    const tick = () => setCooldownMs(msUntil(result.nextSpinAt));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [result?.nextSpinAt]);
-
-  const doSpin = useCallback(async () => {
-    if (!fid) return;
-    try {
-      const r = await fetch('/api/spin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fid }),
-      });
-      if (!r.ok) throw new Error('spin failed');
-      const data: SpinResp = await r.json();
-      setResult(data);
-      setSpinTrigger(x => x + 1);
-    } catch (e) {
-      console.error(e);
-      alert('Erreur serveur');
+  async function spin() {
+    setResult(null)
+    setSpinning(true)
+    // anime la roue (rotation CSS)
+    const node = wheelRef.current
+    if (node) {
+      const turns = 6 + Math.floor(Math.random()*3)
+      node.style.transition = 'transform 2.2s cubic-bezier(.22,.6,.28,1.2)'
+      node.style.transform = `rotate(${turns*360}deg)`
     }
-  }, [fid]);
-
-  const winningId = result?.task?.id ?? null;
-  const displayTask = winningId ? TASKS.find(t => t.id === winningId) : null;
+    try {
+      const res = await fetch('/api/spin', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ fid: Number(fid) || 0 })
+      })
+      const json = await res.json() as SpinResponse | { error: string }
+      if ('task' in json) {
+        setResult(json.task)
+        setNextSpinAt(json.nextSpinAt)
+      } else {
+        alert('Erreur serveur')
+      }
+    } catch {
+      alert('Erreur serveur')
+    } finally {
+      // remet la rotation pour l’état idle
+      setTimeout(() => {
+        const node2 = wheelRef.current
+        if (node2) {
+          node2.style.transition = 'none'
+          node2.style.transform = 'rotate(0deg)'
+        }
+        setSpinning(false)
+      }, 2300)
+    }
+  }
 
   return (
-    <main className="max-w-md mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-3xl font-bold text-center">DailyWheel</h1>
+    <main className="min-h-screen flex flex-col items-center justify-start gap-6 px-4 py-8">
+      <h1 className="text-3xl font-bold">DailyWheel</h1>
 
-      <Wheel
-        segments={TASKS}
-        winningId={winningId}
-        spinTrigger={spinTrigger}
-      />
-
-      <div className="space-y-3">
-        <label className="text-sm font-medium block">FID</label>
+      <div className="w-full max-w-md flex flex-col items-center gap-4">
+        <label className="w-full text-sm font-medium">FID</label>
         <input
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
+          className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 outline-none"
           placeholder="ex: 1234"
           value={fid}
-          onChange={(e) => setFid(e.target.value)}
+          onChange={e=>setFid(e.target.value)}
         />
-        <button
-          onClick={doSpin}
-          disabled={!canSpin}
-          className={`w-full rounded-md px-4 py-3 text-white ${canSpin ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
-        >
-          Spin
-        </button>
       </div>
 
-      <div className="border-t pt-4 space-y-2">
-        <div className="text-sm text-gray-600">
-          Prochain spin&nbsp;{cooldownMs === 0 ? 'disponible' : new Date(cooldownMs).toISOString().slice(11, 19)}
-        </div>
+      {/* Zone roue */}
+      <div className="relative w-[360px] h-[360px] select-none">
+        {/* pointeur */}
+        <img src="/wheel-pointer.svg" alt="" className="absolute left-1/2 -translate-x-1/2 -top-3 z-20 w-8 h-9" />
+        {/* roue (image de fond) */}
+        <div
+          ref={wheelRef}
+          className="absolute inset-0 rounded-full bg-center bg-no-repeat bg-contain"
+          style={{ backgroundImage: 'url(/preview-wheel.png)' }}
+          aria-hidden
+        />
+      </div>
 
-        {displayTask && (
-          <div className="space-y-2">
-            <div className="text-lg font-semibold">{displayTask.label}</div>
+      <button
+        onClick={spin}
+        disabled={spinning || !finished}
+        className="w-[360px] h-12 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-50"
+      >
+        {spinning ? 'Spinning…' : 'Spin'}
+      </button>
+
+      {/* Compte à rebours & résultat */}
+      <div className="w-[360px] mt-2">
+        <p className="text-sm text-gray-500">
+          Prochain spin {finished ? 'disponible' : `dans ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
+        </p>
+        {result && (
+          <div className="mt-4 space-y-3">
+            <h3 className="text-lg font-semibold">{result.label}</h3>
             <a
-              href={displayTask.url}
+              href={result.url}
               target="_blank"
-              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-white"
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 text-white px-4 py-2"
             >
               Ouvrir la tâche
             </a>
@@ -101,5 +112,5 @@ export default function Home() {
         )}
       </div>
     </main>
-  );
+  )
 }
