@@ -87,7 +87,7 @@ export default function WheelPage(){
     }else{
       const a=((toRef.current%360)+360)%360;
       const normalized=(360 - a + POINTER_OFFSET_DEG) % 360; // 0° = top
-      const idx=Math.round(normalized / A) % SEGMENTS;       // choose nearest segment center
+      const idx=Math.floor(normalized / A) % SEGMENTS;       // choose nearest segment center
       setResult(segments[idx].label);
       setSpinning(false);
       if(fid.trim()){
