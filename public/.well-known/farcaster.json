@@ -7,12 +7,19 @@
   "splashImageUrl": "https://placehold.co/200x200/png?bg=111111&text=BASE",
   "splashBackgroundColor": "#111111",
   "primaryCategory": "utility",
-  "tags": ["demo","base","miniapp"],
+  "tags": [
+    "demo",
+    "base",
+    "miniapp"
+  ],
   "publisher": "Your Name",
   "description": "Miniapp de test avec endpoints healthz/ready",
   "accountAssociation": {
     "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
     "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
+  },
+  "baseBuilder": {
+    "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
   }
 }
