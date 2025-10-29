@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-/** === Réglages === */
 const SEGMENTS = 12;
 const SEGMENT_ANGLE = 360 / SEGMENTS;
-/** Pointeur en haut: pour viser le CENTRE d’un segment, 30°/2 = 15° */
+/** Centre de segment sous le pointeur */
 const POINTER_OFFSET_DEG = 15;
 
-/** Remplace par TES quêtes (12 éléments exactement) */
+/** TES quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -15,7 +14,7 @@ const QUESTS = [
   "Suivre 2 comptes",
   "Poster 1 cast",
   "Répondre à 1 cast",
-  "Visiter la miniapp partenaire",
+  "Visiter miniapp partenaire",
   "Claim du jour",
   "Lire 1 thread",
   "Partager un lien",
@@ -23,82 +22,60 @@ const QUESTS = [
   "Bonus mystère"
 ];
 
-/** Couleurs (une par segment) */
+/** Couleurs */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-/** ====== Utilitaires ====== */
 function conicFromColors(cols: string[]) {
   const step = 360 / cols.length;
-  return `conic-gradient(${cols.map((c, i) => `${c} ${i*step}deg ${(i+1)*step}deg`).join(",")})`;
+  return `conic-gradient(${cols.map((c,i)=>`${c} ${i*step}deg ${(i+1)*step}deg`).join(",")})`;
 }
-function now() { return Date.now(); }
-function keyFor(fid: string) { return `dw:lastSpin:${fid}`; }
-function getLastSpin(fid: string) { try { const v = localStorage.getItem(keyFor(fid)); return v ? parseInt(v,10) : 0; } catch { return 0; } }
-function setLastSpin(fid: string, t: number) { try { localStorage.setItem(keyFor(fid), String(t)); } catch {} }
-function secsLeft(fid: string) {
-  const last = getLastSpin(fid);
-  const ttl = 24 * 3600 * 1000;
-  return Math.max(0, Math.ceil((ttl - (now()-last)) / 1000));
-}
-function fmtHMS(total: number) {
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
-/** Sécurise: si QUESTS != SEGMENTS, on ajuste sans planter */
+function now(){return Date.now();}
+function keyFor(fid:string){return `dw:lastSpin:${fid}`;}
+function getLastSpin(fid:string){try{const v=localStorage.getItem(keyFor(fid));return v?parseInt(v,10):0;}catch{return 0;}}
+function setLastSpin(fid:string,t:number){try{localStorage.setItem(keyFor(fid),String(t));}catch{}}
+function secsLeft(fid:string){const last=getLastSpin(fid);const ttl=24*3600*1000;return Math.max(0,Math.ceil((ttl-(now()-last))/1000));}
+function fmtHMS(total:number){const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;}
+
 const LABELS = Array.from({length: SEGMENTS}, (_,i)=> QUESTS[i] ?? `Quête ${i+1}`);
 
-/** ====== Page ====== */
-export default function WheelPage() {
-  const [fid, setFid] = useState("");
-  const [angle, setAngle] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const target = useRef(0);
+export default function WheelPage(){
+  const [fid,setFid]=useState("");
+  const [angle,setAngle]=useState(0);
+  const [spinning,setSpinning]=useState(false);
+  const [result,setResult]=useState<string|null>(null);
+  const [cooldown,setCooldown]=useState(0);
+  const target=useRef(0);
 
-  useEffect(() => {
-    const tick = () => setCooldown(fid ? secsLeft(fid) : 0);
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [fid]);
+  useEffect(()=>{const tick=()=>setCooldown(fid?secsLeft(fid):0);tick();const id=setInterval(tick,1000);return()=>clearInterval(id);},[fid]);
 
-  function canSpin() {
-    if (!fid.trim()) return { ok:false, reason:"Entre ton FID Farcaster" };
-    if (cooldown > 0) return { ok:false, reason:`Prochain spin dans ${fmtHMS(cooldown)}` };
-    return { ok:true, reason:"" };
+  function canSpin(){
+    if(!fid.trim()) return {ok:false,reason:"Entre ton FID Farcaster"};
+    if(cooldown>0) return {ok:false,reason:`Prochain spin dans ${fmtHMS(cooldown)}`};
+    return {ok:true,reason:""};
   }
 
-  function spin() {
-    const gate = canSpin();
-    if (!gate.ok || spinning) return;
+  function spin(){
+    const gate=canSpin();
+    if(!gate.ok||spinning) return;
     setResult(null);
-    const tours = 6 * 360;                 // nb de tours complets
-    const rand = Math.floor(Math.random() * 360);
-    target.current = angle + tours + rand;
+    const tours=6*360;
+    const rand=Math.floor(Math.random()*360);
+    target.current=angle+tours+rand;
     setSpinning(true);
     setAngle(target.current);
   }
 
-  function onEnd() {
-    /** Angle final [0..359] */
-    const a = ((target.current % 360) + 360) % 360;
-    /** On convertit pour que 0° = haut, puis on applique l’offset vers le centre de segment */
-    const normalized = (360 - a + POINTER_OFFSET_DEG) % 360;
-    const index = Math.floor(normalized / SEGMENT_ANGLE) % SEGMENTS;
-    const label = LABELS[index];
-    setResult(label);
+  function onEnd(){
+    const a=((target.current%360)+360)%360;
+    const normalized=(360-a+POINTER_OFFSET_DEG)%360;
+    const index=Math.floor(normalized/SEGMENT_ANGLE)%SEGMENTS;
+    setResult(LABELS[index]);
     setSpinning(false);
-    if (fid.trim()) {
-      setLastSpin(fid.trim(), now());
-      setCooldown(secsLeft(fid.trim()));
-    }
+    if(fid.trim()){setLastSpin(fid.trim(),now());setCooldown(secsLeft(fid.trim()));}
   }
 
   return (
@@ -106,7 +83,6 @@ export default function WheelPage() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl md:text-4xl font-semibold text-center mb-6">DailyWheel</h1>
 
-        {/* Contrôles */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
           <input
             value={fid}
@@ -130,53 +106,52 @@ export default function WheelPage() {
           )}
         </div>
 
-        {/* Cooldown */}
         <div className="text-center text-white/60 text-sm mb-4">
           {fid ? (cooldown>0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
         </div>
 
         {/* Zone roue */}
-        <div className="relative w-full max-w-[520px] mx-auto aspect-square">
-          {/* Pointeur fixe */}
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-30">
+        <div className="relative w-full max-w-[560px] mx-auto aspect-square">
+          {/* Pointeur au-dessus de tout */}
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-40">
             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M28 8L38 28H18L28 8Z" fill="#2563eb" stroke="#0b1220" strokeWidth="4"/>
             </svg>
           </div>
 
-          {/* Bord + ombres fixes */}
-          <div className="absolute inset-0 rounded-full ring-8 ring-[#0f172a]/60 z-0" />
+          {/* Bord + ombre */}
+          <div className="absolute inset-0 rounded-full ring-8 ring-[#0f172a]/60 z-10" />
           <div className="absolute inset-0 rounded-full shadow-[inset_0_20px_60px_rgba(0,0,0,0.35)] z-20 pointer-events-none" />
           <div className="absolute inset-0 grid place-items-center z-30 pointer-events-none">
             <div className="w-16 h-16 rounded-full bg-[#0f172a] ring-8 ring-zinc-200/80 shadow-xl" />
           </div>
 
-          {/* Roue qui tourne */}
+          {/* Roue qui tourne (segments) */}
           <div
-            className="absolute inset-0 rounded-full overflow-hidden z-10"
+            className="absolute inset-0 rounded-full overflow-hidden z-0"
             style={{
-              transform: `rotate(${angle}deg)`,
-              transition: spinning ? "transform 4.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
-              willChange: "transform"
+              transform:`rotate(${angle}deg)`,
+              transition:spinning?"transform 4.2s cubic-bezier(0.16,1,0.3,1)":"none",
+              willChange:"transform"
             }}
             onTransitionEnd={onEnd}
           >
-            <div className="absolute inset-0" style={{ background: conicFromColors(COLORS) }} />
-            <div className="absolute inset-0" style={{ background: "repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)" }} />
+            <div className="absolute inset-0" style={{background:conicFromColors(COLORS)}} />
+            <div className="absolute inset-0" style={{background:"repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)"}} />
           </div>
 
-          {/* Labels autour (fixes) */}
-          <div className="absolute inset-0">
-            {LABELS.map((txt, i) => {
-              const mid = i * SEGMENT_ANGLE + SEGMENT_ANGLE / 2;
+          {/* LABELS visibles au-dessus de la roue */}
+          <div className="absolute inset-0 z-30 pointer-events-none">
+            {LABELS.map((txt,i)=>{
+              const mid=i*SEGMENT_ANGLE+SEGMENT_ANGLE/2;
               return (
                 <div
                   key={i}
-                  className="absolute top-1/2 left-1/2 text-[11px] md:text-[12px] font-medium text-white drop-shadow max-w-[28%] text-center"
+                  className="absolute top-1/2 left-1/2 text-[12px] md:text-[13px] font-semibold text-white text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
                   style={{
-                    transform: `rotate(${mid}deg) translate(0, -43%) rotate(${-mid}deg)`,
-                    transformOrigin: "0 0",
-                    lineHeight: 1.1
+                    transform:`rotate(${mid}deg) translate(0,-42%) rotate(${-mid}deg)`,
+                    transformOrigin:"0 0",
+                    width:"28%"
                   }}
                   title={txt}
                 >
@@ -188,7 +163,7 @@ export default function WheelPage() {
         </div>
 
         <p className="text-center text-white/50 text-xs mt-6">
-          Tu peux éditer la liste <code>QUESTS</code> pour définir tes quêtes. Si l’alignement paraît décalé d’un demi-segment, ajuste <code>POINTER_OFFSET_DEG</code> (15° recommandé).
+          Si besoin, ajuste <code>POINTER_OFFSET_DEG</code> (15° place le pointeur au centre d’un segment).
         </p>
       </div>
     </main>
