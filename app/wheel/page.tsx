@@ -1,37 +1,48 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+/** === Réglages === */
 const SEGMENTS = 12;
 const SEGMENT_ANGLE = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 0;
+/** Pointeur en haut: pour viser le CENTRE d’un segment, 30°/2 = 15° */
+const POINTER_OFFSET_DEG = 15;
 
-// Modifie ces labels si tu veux des récompenses réelles
-const LABELS = ["1","2","3","4","5","6","7","8","9","10","11","12"];
-
-const COLORS = [
-  "#ef4444", "#f59e0b", "#3b82f6", "#fbbf24",
-  "#a3e635", "#93c5fd", "#f97316", "#fde68a",
-  "#22c55e", "#60a5fa", "#a78bfa", "#94a3b8"
+/** Remplace par TES quêtes (12 éléments exactement) */
+const QUESTS = [
+  "Check-in quotidien",
+  "Like 3 casts",
+  "Recast 1 post",
+  "Suivre 2 comptes",
+  "Poster 1 cast",
+  "Répondre à 1 cast",
+  "Visiter la miniapp partenaire",
+  "Claim du jour",
+  "Lire 1 thread",
+  "Partager un lien",
+  "Inviter 1 ami",
+  "Bonus mystère"
 ];
 
+/** Couleurs (une par segment) */
+const COLORS = [
+  "#ef4444","#f59e0b","#3b82f6","#fbbf24",
+  "#22c55e","#a78bfa","#f97316","#93c5fd",
+  "#10b981","#60a5fa","#fde68a","#94a3b8"
+];
+
+/** ====== Utilitaires ====== */
 function conicFromColors(cols: string[]) {
   const step = 360 / cols.length;
   return `conic-gradient(${cols.map((c, i) => `${c} ${i*step}deg ${(i+1)*step}deg`).join(",")})`;
 }
-
 function now() { return Date.now(); }
 function keyFor(fid: string) { return `dw:lastSpin:${fid}`; }
-function getLastSpin(fid: string) {
-  try { const v = localStorage.getItem(keyFor(fid)); return v ? parseInt(v, 10) : 0; } catch { return 0; }
-}
-function setLastSpin(fid: string, t: number) {
-  try { localStorage.setItem(keyFor(fid), String(t)); } catch {}
-}
+function getLastSpin(fid: string) { try { const v = localStorage.getItem(keyFor(fid)); return v ? parseInt(v,10) : 0; } catch { return 0; } }
+function setLastSpin(fid: string, t: number) { try { localStorage.setItem(keyFor(fid), String(t)); } catch {} }
 function secsLeft(fid: string) {
   const last = getLastSpin(fid);
-  const twentyFour = 24 * 3600 * 1000;
-  const diff = now() - last;
-  return Math.max(0, Math.ceil((twentyFour - diff) / 1000));
+  const ttl = 24 * 3600 * 1000;
+  return Math.max(0, Math.ceil((ttl - (now()-last)) / 1000));
 }
 function fmtHMS(total: number) {
   const h = Math.floor(total / 3600);
@@ -39,13 +50,16 @@ function fmtHMS(total: number) {
   const s = total % 60;
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
+/** Sécurise: si QUESTS != SEGMENTS, on ajuste sans planter */
+const LABELS = Array.from({length: SEGMENTS}, (_,i)=> QUESTS[i] ?? `Quête ${i+1}`);
 
+/** ====== Page ====== */
 export default function WheelPage() {
-  const [fid, setFid] = useState<string>("");
+  const [fid, setFid] = useState("");
   const [angle, setAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState<number>(0);
+  const [cooldown, setCooldown] = useState(0);
   const target = useRef(0);
 
   useEffect(() => {
@@ -56,25 +70,27 @@ export default function WheelPage() {
   }, [fid]);
 
   function canSpin() {
-    if (!fid.trim()) return { ok: false, reason: "Renseigne un FID" };
-    if (cooldown > 0) return { ok: false, reason: `Prochain spin dans ${fmtHMS(cooldown)}` };
-    return { ok: true, reason: "" };
+    if (!fid.trim()) return { ok:false, reason:"Entre ton FID Farcaster" };
+    if (cooldown > 0) return { ok:false, reason:`Prochain spin dans ${fmtHMS(cooldown)}` };
+    return { ok:true, reason:"" };
   }
 
   function spin() {
     const gate = canSpin();
     if (!gate.ok || spinning) return;
     setResult(null);
-    const extra = 6 * 360;                      // nombre de tours complets
+    const tours = 6 * 360;                 // nb de tours complets
     const rand = Math.floor(Math.random() * 360);
-    target.current = angle + extra + rand;
+    target.current = angle + tours + rand;
     setSpinning(true);
     setAngle(target.current);
   }
 
   function onEnd() {
+    /** Angle final [0..359] */
     const a = ((target.current % 360) + 360) % 360;
-    const normalized = (360 - a + POINTER_OFFSET_DEG) % 360; // 0° en haut
+    /** On convertit pour que 0° = haut, puis on applique l’offset vers le centre de segment */
+    const normalized = (360 - a + POINTER_OFFSET_DEG) % 360;
     const index = Math.floor(normalized / SEGMENT_ANGLE) % SEGMENTS;
     const label = LABELS[index];
     setResult(label);
@@ -94,7 +110,7 @@ export default function WheelPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
           <input
             value={fid}
-            onChange={(e) => setFid(e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e)=>setFid(e.target.value.replace(/[^0-9]/g,""))}
             placeholder="FID (ex: 1234)"
             className="px-4 py-2 rounded-lg bg-white/10 border border-white/10 outline-none"
             inputMode="numeric"
@@ -109,14 +125,14 @@ export default function WheelPage() {
           </button>
           {result && (
             <div className="text-sm md:text-base bg-white/10 px-3 py-2 rounded-lg border border-white/10">
-              Résultat : <span className="font-semibold">{result}</span>
+              Quête gagnée : <span className="font-semibold">{result}</span>
             </div>
           )}
         </div>
 
-        {/* Info cooldown */}
+        {/* Cooldown */}
         <div className="text-center text-white/60 text-sm mb-4">
-          {fid ? (cooldown > 0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
+          {fid ? (cooldown>0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
         </div>
 
         {/* Zone roue */}
@@ -128,7 +144,7 @@ export default function WheelPage() {
             </svg>
           </div>
 
-          {/* Bord et ombres fixes */}
+          {/* Bord + ombres fixes */}
           <div className="absolute inset-0 rounded-full ring-8 ring-[#0f172a]/60 z-0" />
           <div className="absolute inset-0 rounded-full shadow-[inset_0_20px_60px_rgba(0,0,0,0.35)] z-20 pointer-events-none" />
           <div className="absolute inset-0 grid place-items-center z-30 pointer-events-none">
@@ -146,26 +162,23 @@ export default function WheelPage() {
             onTransitionEnd={onEnd}
           >
             <div className="absolute inset-0" style={{ background: conicFromColors(COLORS) }} />
-            <div
-              className="absolute inset-0"
-              style={{
-                background: "repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)"
-              }}
-            />
+            <div className="absolute inset-0" style={{ background: "repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)" }} />
           </div>
 
-          {/* Labels (fixes, placés autour) */}
+          {/* Labels autour (fixes) */}
           <div className="absolute inset-0">
             {LABELS.map((txt, i) => {
               const mid = i * SEGMENT_ANGLE + SEGMENT_ANGLE / 2;
               return (
                 <div
                   key={i}
-                  className="absolute top-1/2 left-1/2 text-[12px] md:text-sm font-medium text-white drop-shadow"
+                  className="absolute top-1/2 left-1/2 text-[11px] md:text-[12px] font-medium text-white drop-shadow max-w-[28%] text-center"
                   style={{
-                    transform: `rotate(${mid}deg) translate(0, -38%) rotate(${-mid}deg)`,
-                    transformOrigin: "0 0"
+                    transform: `rotate(${mid}deg) translate(0, -43%) rotate(${-mid}deg)`,
+                    transformOrigin: "0 0",
+                    lineHeight: 1.1
                   }}
+                  title={txt}
                 >
                   {txt}
                 </div>
@@ -175,7 +188,7 @@ export default function WheelPage() {
         </div>
 
         <p className="text-center text-white/50 text-xs mt-6">
-          Ajuste <code>POINTER_OFFSET_DEG</code> si le pointeur est très légèrement décalé.
+          Tu peux éditer la liste <code>QUESTS</code> pour définir tes quêtes. Si l’alignement paraît décalé d’un demi-segment, ajuste <code>POINTER_OFFSET_DEG</code> (15° recommandé).
         </p>
       </div>
     </main>
