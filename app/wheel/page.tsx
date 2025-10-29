@@ -3,10 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEGMENTS = 12;
 const SEGMENT_ANGLE = 360 / SEGMENTS;
-/** Centre du segment sous le pointeur (pointe vers le haut) */
 const POINTER_OFFSET_DEG = 15;
 
-/** Quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -22,36 +20,31 @@ const QUESTS = [
   "Bonus mystère"
 ];
 
-/** Couleurs (12) */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-const LABELS = Array.from({length: SEGMENTS}, (_, i) => QUESTS[i] ?? `Quête ${i+1}`);
+const CX = 500, CY = 500;
+const R_OUT = 470;         // bord extérieur
+const R_IN  = 140;         // moyeu (trou)
+const R_LABEL_START = R_IN + 12;   // où commence le texte (proche du centre)
+const R_LABEL_END   = R_OUT - 60;  // jusqu’où va le texte
 
-/** ===== Utils géométrie ===== */
-const CX = 500, CY = 500;   // centre
-const R_OUT = 470;          // rayon externe (bord)
-const R_TEXT = 360;         // rayon de la courbe texte (lisible)
-const R_IN = 140;           // rayon interne (moyeu)
-
-function deg2rad(d: number){ return (Math.PI/180)*d; }
-/** 0° = en haut (axe Y négatif), angle dans le sens horaire  */
-function polar(deg: number, r: number){
+function deg2rad(d:number){ return (Math.PI/180)*d; }
+function polar(deg:number, r:number){
   const a = deg2rad(deg-90);
   return { x: CX + r*Math.cos(a), y: CY + r*Math.sin(a) };
 }
-function arcPath(r: number, a0: number, a1: number){
-  const p0 = polar(a0, r);
-  const p1 = polar(a1, r);
+function arcPath(r:number, a0:number, a1:number){
+  const p0 = polar(a0, r), p1 = polar(a1, r);
   const large = (a1-a0) % 360 > 180 ? 1 : 0;
   return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}`;
 }
-function wedgePath(rOut: number, rIn: number, a0: number, a1: number){
+function wedgePath(rOut:number, rIn:number, a0:number, a1:number){
   const o0 = polar(a0, rOut), o1 = polar(a1, rOut);
-  const i1 = polar(a1, rIn), i0 = polar(a0, rIn);
+  const i1 = polar(a1, rIn),  i0 = polar(a0, rIn);
   const large = (a1-a0) % 360 > 180 ? 1 : 0;
   return [
     `M ${o0.x} ${o0.y}`,
@@ -70,7 +63,6 @@ export default function WheelPage(){
   const [cooldown, setCooldown] = useState(0);
   const target = useRef(0);
 
-  // cooldown par FID (localStorage)
   useEffect(() => {
     const tick = () => {
       if (!fid) return setCooldown(0);
@@ -87,13 +79,11 @@ export default function WheelPage(){
     const h = Math.floor(total/3600), m = Math.floor((total%3600)/60), s = total%60;
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
   }
-
   function canSpin(){
     if (!fid.trim()) return { ok:false, reason:"Entre ton FID Farcaster" };
     if (cooldown>0) return { ok:false, reason:`Prochain spin dans ${fmtHMS(cooldown)}` };
     return { ok:true, reason:"" };
   }
-
   function spin(){
     const gate = canSpin();
     if (!gate.ok || spinning) return;
@@ -104,35 +94,34 @@ export default function WheelPage(){
     setSpinning(true);
     setAngle(target.current);
   }
-
   function onEnd(){
     const a = ((target.current % 360)+360)%360;
     const normalized = (360 - a + POINTER_OFFSET_DEG) % 360; // 0° = haut
-    const index = Math.floor(normalized / SEGMENT_ANGLE) % SEGMENTS;
-    setResult(LABELS[index]);
+    const index = Math.floor(normalized / (360/12)) % 12;
+    setResult(QUESTS[index]);
     setSpinning(false);
     if (fid.trim()){
       localStorage.setItem(`dw:lastSpin:${fid}`, String(Date.now()));
-      setCooldown(24*3600); // recalculera à la seconde suivante
+      setCooldown(24*3600);
     }
   }
 
-  const segments = useMemo(()=>{
-    return Array.from({length: SEGMENTS}, (_,i)=>({
+  const segments = useMemo(()=>(
+    Array.from({length: 12}, (_,i)=>({
       i,
-      a0: i*SEGMENT_ANGLE,
-      a1: (i+1)*SEGMENT_ANGLE,
+      a0: i*(360/12),
+      a1: (i+1)*(360/12),
+      mid: i*(360/12)+(360/12)/2,
       color: COLORS[i % COLORS.length],
-      label: LABELS[i]
-    }));
-  }, []);
+      label: QUESTS[i]
+    }))
+  ), []);
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl md:text-4xl font-semibold text-center mb-6">DailyWheel</h1>
 
-        {/* Contrôles */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
           <input
             value={fid}
@@ -160,7 +149,6 @@ export default function WheelPage(){
           {fid ? (cooldown>0 ? `Prochain spin dans ${fmtHMS(cooldown)}` : "Tu peux spinner") : "Entre un FID pour spinner"}
         </div>
 
-        {/* WHEEL */}
         <div className="relative w-full max-w-[560px] mx-auto">
           {/* Pointeur */}
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-40">
@@ -170,9 +158,10 @@ export default function WheelPage(){
           </div>
 
           <svg viewBox="0 0 1000 1000" className="w-full h-auto block">
-            {/* Anneau de fond fixe */}
+            {/* Anneau fond */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="#0f172a" opacity="0.25"/>
-            {/* Groupe qui TOURNE */}
+
+            {/* GROUPE QUI TOURNE */}
             <g
               style={{
                 transformBox: "fill-box",
@@ -186,40 +175,45 @@ export default function WheelPage(){
               {segments.map(s => (
                 <path key={`wedge-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color}/>
               ))}
-
-              {/* Trames séparatrices légères */}
+              {/* Séparateurs */}
               {segments.map(s => (
-                <path key={`sep-${s.i}`} d={arcPath(R_OUT, s.a0, s.a1)}
-                  stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>
+                <path key={`sep-${s.i}`} d={arcPath(R_OUT, s.a0, s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>
               ))}
 
-              {/* Défs des arcs de texte */}
-              <defs>
-                {segments.map(s=>{
-                  // arc pour le texte, du bord gauche vers le droit de chaque secteur
-                  const mid = s.a0 + (s.a1 - s.a0)/2;
-                  const aStart = mid - (SEGMENT_ANGLE*0.90)/2;
-                  const aEnd   = mid + (SEGMENT_ANGLE*0.90)/2;
-                  return (
-                    <path id={`arc-${s.i}`} key={`arcdef-${s.i}`}
-                      d={arcPath(R_TEXT, aStart, aEnd)} />
-                  );
-                })}
-              </defs>
-
-              {/* Textes sur arc (courbés, centrés) */}
-              {segments.map(s => (
-                <text key={`txt-${s.i}`} fontSize="30" fill="#fff"
-                  style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.6)", strokeWidth: 6 }}
-                  textAnchor="middle">
-                  <textPath href={`#arc-${s.i}`} startOffset="50%">
-                    {s.label}
-                  </textPath>
-                </text>
-              ))}
+              {/* LIBELLÉS EN RADIALE (tournent avec la roue) */}
+              {segments.map((s) => {
+                // Groupe pivoté sur l'angle médian
+                const rotate = `rotate(${s.mid} ${CX} ${CY})`;
+                return (
+                  <g key={`lab-${s.i}`} transform={rotate}>
+                    {/* Ligne guide (optionnelle, invisible) */}
+                    {/* <line x1={CX} y1={CY} x2={CX} y2={CY - R_LABEL_END} stroke="transparent" /> */}
+                    <text
+                      x={CX}
+                      y={CY - R_LABEL_START}
+                      fill="#fff"
+                      fontSize="22"
+                      fontWeight={700}
+                      textAnchor="middle"
+                      style={{
+                        // Texte vertical orienté "upright", puis la rotation du groupe l'aligne sur le rayon
+                        writingMode: "vertical-rl",
+                        textOrientation: "upright",
+                        paintOrder: "stroke",
+                        stroke: "rgba(0,0,0,0.6)",
+                        strokeWidth: 6,
+                        letterSpacing: "2px",
+                      }}
+                    >
+                      {/* On tronque pour rester dans l’arc utile */}
+                      {s.label}
+                    </text>
+                  </g>
+                );
+              })}
             </g>
 
-            {/* Bord + moyeu fixes par-dessus */}
+            {/* Bord + moyeu fixes */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="none" stroke="#0f172a" strokeWidth="16" opacity="0.6"/>
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
