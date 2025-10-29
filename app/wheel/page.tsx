@@ -3,10 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 const SEGMENTS = 12;
 const SEGMENT_ANGLE = 360 / SEGMENTS;
-/** Centre de segment sous le pointeur */
-const POINTER_OFFSET_DEG = 15;
+const POINTER_OFFSET_DEG = 15; // centre du segment sous le pointeur
 
-/** TES quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -22,7 +20,6 @@ const QUESTS = [
   "Bonus mystère"
 ];
 
-/** Couleurs */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
@@ -112,7 +109,7 @@ export default function WheelPage(){
 
         {/* Zone roue */}
         <div className="relative w-full max-w-[560px] mx-auto aspect-square">
-          {/* Pointeur au-dessus de tout */}
+          {/* Pointeur au-dessus */}
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-40">
             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M28 8L38 28H18L28 8Z" fill="#2563eb" stroke="#0b1220" strokeWidth="4"/>
@@ -126,7 +123,7 @@ export default function WheelPage(){
             <div className="w-16 h-16 rounded-full bg-[#0f172a] ring-8 ring-zinc-200/80 shadow-xl" />
           </div>
 
-          {/* Roue qui tourne (segments) */}
+          {/* Roue qui tourne (segments + labels radiaux) */}
           <div
             className="absolute inset-0 rounded-full overflow-hidden z-0"
             style={{
@@ -136,35 +133,38 @@ export default function WheelPage(){
             }}
             onTransitionEnd={onEnd}
           >
+            {/* Segments */}
             <div className="absolute inset-0" style={{background:conicFromColors(COLORS)}} />
             <div className="absolute inset-0" style={{background:"repeating-conic-gradient(from 0deg, rgba(0,0,0,.22) 0deg 0.6deg, transparent 0.6deg 30deg)"}} />
-          </div>
 
-          {/* LABELS visibles au-dessus de la roue */}
-          <div className="absolute inset-0 z-30 pointer-events-none">
-            {LABELS.map((txt,i)=>{
-              const mid=i*SEGMENT_ANGLE+SEGMENT_ANGLE/2;
-              return (
-                <div
-                  key={i}
-                  className="absolute top-1/2 left-1/2 text-[12px] md:text-[13px] font-semibold text-white text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
-                  style={{
-                    transform:`rotate(${mid}deg) translate(0,-42%) rotate(${-mid}deg)`,
-                    transformOrigin:"0 0",
-                    width:"28%"
-                  }}
-                  title={txt}
-                >
-                  {txt}
-                </div>
-              );
-            })}
+            {/* Labels radiaux (dans le conteneur qui TOURNE) */}
+            <div className="absolute inset-0 z-20 pointer-events-none">
+              {LABELS.map((txt,i)=>{
+                const mid=i*SEGMENT_ANGLE+SEGMENT_ANGLE/2;
+                return (
+                  <div
+                    key={i}
+                    className="absolute top-1/2 left-1/2 text-white font-semibold drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
+                    style={{
+                      transform:`rotate(${mid}deg) translate(0,-40%)`,
+                      transformOrigin:"0 0",
+                      width:"0",
+                      writingMode:"vertical-rl" as any,
+                      textOrientation:"upright" as any,
+                      fontSize:"12px",
+                      lineHeight: "1.1",
+                      letterSpacing: "1px",
+                      textAlign:"center"
+                    }}
+                    title={txt}
+                  >
+                    {txt}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-
-        <p className="text-center text-white/50 text-xs mt-6">
-          Si besoin, ajuste <code>POINTER_OFFSET_DEG</code> (15° place le pointeur au centre d’un segment).
-        </p>
       </div>
     </main>
   );
