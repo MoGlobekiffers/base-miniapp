@@ -1,16 +1,21 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/** Réglages */
+/** Réglages généraux */
 const SEGMENTS = 12;
 const A = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 15;              // centre du segment sous le pointeur
-const CX = 500, CY = 500;
-const R_OUT = 470;                           // bord extérieur
-const R_IN  = 140;                           // moyeu
-const R_TEXT = 365;                          // rayon du texte (proche du bord)
-const FONT_SIZE = 26;                        // taille du texte sur l’arc
+const POINTER_OFFSET_DEG = 15;     // le pointeur vise le CENTRE du segment
 
+/** Géométrie SVG (coordonnées stables) */
+const CX = 500, CY = 500;
+const R_OUT = 470;                  // bord extérieur
+const R_IN  = 140;                  // moyeu
+const R_LABEL_OUT = R_OUT - 28;     // où commence le texte (près du bord)
+const R_LABEL_IN  = R_IN  + 20;     // où finit le texte (près du moyeu)
+const FONT_SIZE = 24;               // taille caractères radiaux
+const LETTER_STROKE = 6;            // contour pour lisibilité
+
+/** Quêtes (12) */
 const QUESTS = [
   "Check-in quotidien",
   "Like 3 casts",
@@ -25,17 +30,19 @@ const QUESTS = [
   "Inviter 1 ami",
   "Bonus mystère"
 ];
+
+/** Couleurs */
 const COLORS = [
   "#ef4444","#f59e0b","#3b82f6","#fbbf24",
   "#22c55e","#a78bfa","#f97316","#93c5fd",
   "#10b981","#60a5fa","#fde68a","#94a3b8"
 ];
 
-/** Utils géométrie (arrondis stables => pas d’erreur d’hydratation) */
+/** Utils géométrie (arrondis => hydratation OK) */
 const r = (n:number) => Number(n.toFixed(3));
 const d2r = (d:number) => (Math.PI/180)*d;
 function P(deg:number, RR:number){
-  const a = d2r(deg - 90);
+  const a = d2r(d - 90);
   return { x: r(CX + RR*Math.cos(a)), y: r(CY + RR*Math.sin(a)) };
 }
 function arcPath(RR:number, a0:number, a1:number){
@@ -58,6 +65,7 @@ export default function WheelPage(){
   const [cooldown, setCooldown] = useState(0);
   const target = useRef(0);
 
+  /** Cooldown 1 spin / 24h / FID (localStorage) */
   useEffect(() => {
     const tick = () => {
       if (!fid) return setCooldown(0);
@@ -126,7 +134,7 @@ export default function WheelPage(){
           <button
             onClick={spin}
             disabled={spinning || !canSpin().ok}
-            className="px-6 py-3 rounded-xl bg-white text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow"
+            className="px-6 py-3 rounded-xl bg白 text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow"
             title={!canSpin().ok ? canSpin().reason : "Lancer la roue"}
           >
             {spinning ? "Spinning..." : "Spin"}
@@ -174,39 +182,59 @@ export default function WheelPage(){
                 <path key={`sep-${s.i}`} d={arcPath(R_OUT, s.a0, s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>
               ))}
 
-              {/* Défs des ARCS de texte (lecture sur l’arc, bien lisible) */}
-              <defs>
-                {segments.map(s=>{
-                  // arc couvrant ~90% du secteur pour laisser un peu de marge
-                  const span = A * 0.9;
-                  const aStart = s.mid - span/2;
-                  const aEnd   = s.mid + span/2;
-                  return <path id={`arc-${s.i}`} key={`arcdef-${s.i}`} d={arcPath(R_TEXT, aStart, aEnd)} />;
-                })}
-              </defs>
+              {/* Libellés RADIAUX — lisibles EXTÉRIEUR -> CENTRE et CENTRÉS dans l’anneau */}
+              {segments.map((s) => {
+                const chars = s.label.split("");
+                const len = Math.max(chars.length, 1);
+                const span = R_LABEL_OUT - R_LABEL_IN;        // longueur radiale dispo
+                const step = span / (len - 1 || 1);
 
-              {/* Libellés sur arc, centrés */}
-              {segments.map(s => (
-                <text
-                  key={`txt-${s.i}`}
-                  fontSize={FONT_SIZE}
-                  fontWeight={800}
-                  fill="#fff"
-                  textAnchor="middle"
-                  style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.7)", strokeWidth: 6 }}
-                >
-                  <textPath href={`#arc-${s.i}`} startOffset="50%">
-                    {s.label}
-                  </textPath>
-                </text>
-              ))}
+                // Groupe pivoté sur l’angle médian ⇒ l’axe Y du groupe est le rayon
+                return (
+                  <g key={`lab-${s.i}`} transform={`rotate(${r(s.mid)} ${CX} ${CY})`}>
+                    {chars.map((ch, k) => {
+                      // Lecture EXTÉRIEUR -> CENTRE : premier char près du bord
+                      const rr = R_LABEL_OUT - step * k;
+
+                      // Centrage "optique" vertical : on recale la bande de texte au centre de l’anneau
+                      // (si mot court, l’espace autour reste équilibré)
+                      return (
+                        <text
+                          key={k}
+                          x={CX}
+                          y={r(CY - rr)}
+                          fontSize={FONT_SIZE}
+                          fontWeight={800}
+                          fill="#fff"
+                          textAnchor="middle"
+                          style={{
+                            // lettres droites verticales
+                            writingMode: "vertical-rl",
+                            textOrientation: "upright",
+                            // contour pour lisibilité
+                            paintOrder: "stroke",
+                            stroke: "rgba(0,0,0,0.7)",
+                            strokeWidth: LETTER_STROKE
+                          }}
+                        >
+                          {ch}
+                        </text>
+                      );
+                    })}
+                  </g>
+                );
+              })}
             </g>
 
-            {/* Bord + moyeu fixes */}
+            {/* Bord + moyeu */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="none" stroke="#0f172a" strokeWidth="16" opacity="0.6"/>
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
         </div>
+
+        <p className="text-center text-white/50 text-xs mt-6">
+          Ajuste lisibilité : <code>FONT_SIZE</code> (22–26), <code>R_LABEL_OUT</code>/<code>R_LABEL_IN</code> (+/- 10), ou <code>LETTER_STROKE</code> (4–6).
+        </p>
       </div>
     </main>
   );
