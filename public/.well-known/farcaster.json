@@ -40,6 +40,14 @@
     ],
     "subtitle": "Mini app roulette",
     "primaryCategory": "utility",
-    "homeUrl": "https://base-miniapp-gamma.vercel.app/embed"
+    "homeUrl": "https://base-miniapp-gamma.vercel.app/embed",
+    "ogTitle": "DailyWheel — Spin once a day",
+    "ogDescription": "A fun daily wheel for simple Farcaster quests.",
+    "ogImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "screenshotUrls": [
+      "https://base-miniapp-gamma.vercel.app/screenshots/screen-1.png",
+      "https://base-miniapp-gamma.vercel.app/screenshots/screen-2.png",
+      "https://base-miniapp-gamma.vercel.app/screenshots/screen-3.png"
+    ]
   }
 }
