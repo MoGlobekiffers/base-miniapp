@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /* Réglages */
 const SEGMENTS = 12;
 const A = 360 / SEGMENTS;
-/* Offset à 0° car la flèche pointe déjà le haut du cercle */
 const POINTER_OFFSET_DEG = 0;
 
 const CX = 500, CY = 500;
@@ -56,7 +55,7 @@ export default function WheelPage(){
   const [cooldown,setCooldown]=useState(0);
   const target=useRef(0);
 
-  /* Cooldown 1 spin / 24h / FID (localStorage) */
+  /* Cooldown 1 spin / 24h / FID */
   useEffect(()=>{const t=()=>{if(!fid)return setCooldown(0);const last=+(localStorage.getItem(`dw:lastSpin:${fid}`)||0);const left=Math.max(0,24*3600*1000-(Date.now()-last));setCooldown(Math.ceil(left/1000));};t();const id=setInterval(t,1000);return()=>clearInterval(id);},[fid]);
 
   const segments=useMemo(()=>Array.from({length:SEGMENTS},(_,i)=>({
@@ -66,13 +65,11 @@ export default function WheelPage(){
   function fmtHMS(t:number){const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;}
   function canSpin(){ if(!fid.trim())return{ok:false,reason:"Entre ton FID Farcaster"}; if(cooldown>0)return{ok:false,reason:`Prochain spin dans ${fmtHMS(cooldown)}`}; return{ok:true,reason:""}; }
   function spin(){ const g=canSpin(); if(!g.ok||spinning)return; setResult(null); const tours=6*360; const rand=Math.floor(Math.random()*360); target.current=angle+tours+rand; setSpinning(true); setAngle(target.current); }
+
   function onEnd(){
-    /* angle final, 0° = haut */
-    const a=((target.current%360)+360)%360;
-    /* remet 0° en haut + offset (ici 0) */
-    const normalized=(360 - a + POINTER_OFFSET_DEG) % 360;
-    /* vise le CENTRE du segment sous la flèche */
-    const idx=Math.floor((normalized + A/2) / A) % SEGMENTS;
+    const a=((target.current%360)+360)%360;                  // angle final
+    const normalized=(360 - a + POINTER_OFFSET_DEG) % 360;   // 0° = haut
+    const idx=Math.round(normalized / A) % SEGMENTS;         // ⟵ arrondi = centre du segment
     setResult(segments[idx].label);
     setSpinning(false);
     if(fid.trim()){
@@ -97,19 +94,30 @@ export default function WheelPage(){
         </div>
 
         <div className="relative w-full max-w-[560px] mx-auto">
-          {/* Flèche bleue qui pointe VERS le centre */}
+          {/* Flèche bleue vers le centre */}
           <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 z-40">
             <svg width="64" height="40" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg">
-              {/* pointe en bas = vers le centre */}
               <path d="M32 36 L50 8 H14 Z" fill="#2563eb" stroke="#0b1220" strokeWidth="6" strokeLinejoin="round"/>
             </svg>
           </div>
 
           <svg viewBox="0 0 1000 1000" className="w-full h-auto block">
-            <circle cx={CX} cy={CY} r={R_OUT} fill="#0f172a" opacity="0.25"/>
+            {/* TOUT ce qui est visuel tourne ensemble */}
+            <g
+              style={{
+                transformBox:"fill-box",
+                transformOrigin:"50% 50%",
+                transform:`rotate(${angle}deg)`,
+                transition:spinning?"transform 4.2s cubic-bezier(0.16,1,0.3,1)":"none",
+              }}
+              onTransitionEnd={onEnd}
+            >
+              {/* fin anneau d’arrière-plan (désormais DANS le groupe) */}
+              <circle cx={CX} cy={CY} r={R_OUT} fill="#0f172a" opacity="0.25"/>
 
-            <g style={{transformBox:"fill-box",transformOrigin:"50% 50%",transform:`rotate(${angle}deg)`,transition:spinning?"transform 4.2s cubic-bezier(0.16,1,0.3,1)":"none"}} onTransitionEnd={onEnd}>
+              {/* Segments */}
               {segments.map(s=> <path key={`w-${s.i}`} d={wedgePath(R_OUT,R_IN,s.a0,s.a1)} fill={s.color}/>)}
+              {/* Séparateurs */}
               {segments.map(s=> <path key={`sep-${s.i}`} d={arcPath(R_OUT,s.a0,s.a1)} stroke="rgba(0,0,0,0.18)" strokeWidth="2" fill="none"/>)}
 
               {/* Chemins radiaux (ext -> int) */}
@@ -134,6 +142,7 @@ export default function WheelPage(){
               ))}
             </g>
 
+            {/* Bord + moyeu (fixes par-dessus) */}
             <circle cx={CX} cy={CY} r={R_OUT} fill="none" stroke="#0f172a" strokeWidth="16" opacity="0.6"/>
             <circle cx={CX} cy={CY} r={R_IN} fill="#0b1220" stroke="#e5e7eb" strokeWidth="16"/>
           </svg>
