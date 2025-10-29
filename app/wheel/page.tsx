@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /* Réglages */
 const SEGMENTS = 12;
 const A = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 0;
+const POINTER_OFFSET_DEG = 1;
 
 const CX = 500, CY = 500;
 const R_OUT = 470;
