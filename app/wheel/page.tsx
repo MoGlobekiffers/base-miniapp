@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /* Réglages */
 const SEGMENTS = 12;
 const A = 360 / SEGMENTS;
-const POINTER_OFFSET_DEG = 15;
+/* Offset à 0° car la flèche pointe déjà le haut du cercle */
+const POINTER_OFFSET_DEG = 0;
 
 const CX = 500, CY = 500;
 const R_OUT = 470;
@@ -13,7 +14,7 @@ const R_IN  = 140;
 /* Texte radial (ext -> int) */
 const R_LABEL_OUT = R_OUT - 26;
 const R_LABEL_IN  = R_IN  + 24;
-const FONT_SIZE   = 26;   // <- plus grand
+const FONT_SIZE   = 26;
 const STROKE_W    = 6;
 
 const QUESTS = [
@@ -55,6 +56,7 @@ export default function WheelPage(){
   const [cooldown,setCooldown]=useState(0);
   const target=useRef(0);
 
+  /* Cooldown 1 spin / 24h / FID (localStorage) */
   useEffect(()=>{const t=()=>{if(!fid)return setCooldown(0);const last=+(localStorage.getItem(`dw:lastSpin:${fid}`)||0);const left=Math.max(0,24*3600*1000-(Date.now()-last));setCooldown(Math.ceil(left/1000));};t();const id=setInterval(t,1000);return()=>clearInterval(id);},[fid]);
 
   const segments=useMemo(()=>Array.from({length:SEGMENTS},(_,i)=>({
@@ -64,7 +66,20 @@ export default function WheelPage(){
   function fmtHMS(t:number){const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;}
   function canSpin(){ if(!fid.trim())return{ok:false,reason:"Entre ton FID Farcaster"}; if(cooldown>0)return{ok:false,reason:`Prochain spin dans ${fmtHMS(cooldown)}`}; return{ok:true,reason:""}; }
   function spin(){ const g=canSpin(); if(!g.ok||spinning)return; setResult(null); const tours=6*360; const rand=Math.floor(Math.random()*360); target.current=angle+tours+rand; setSpinning(true); setAngle(target.current); }
-  function onEnd(){ const a=((target.current%360)+360)%360; const normalized=(360-a+POINTER_OFFSET_DEG)%360; const idx=Math.floor(normalized/(360/SEGMENTS))%SEGMENTS; setResult(segments[idx].label); setSpinning(false); if(fid.trim()){localStorage.setItem(`dw:lastSpin:${fid}`,String(Date.now())); setCooldown(24*3600);} }
+  function onEnd(){
+    /* angle final, 0° = haut */
+    const a=((target.current%360)+360)%360;
+    /* remet 0° en haut + offset (ici 0) */
+    const normalized=(360 - a + POINTER_OFFSET_DEG) % 360;
+    /* vise le CENTRE du segment sous la flèche */
+    const idx=Math.floor((normalized + A/2) / A) % SEGMENTS;
+    setResult(segments[idx].label);
+    setSpinning(false);
+    if(fid.trim()){
+      localStorage.setItem(`dw:lastSpin:${fid}`,String(Date.now()));
+      setCooldown(24*3600);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
@@ -82,7 +97,7 @@ export default function WheelPage(){
         </div>
 
         <div className="relative w-full max-w-[560px] mx-auto">
-          {/* Flèche BLEUE pointant VERS le centre */}
+          {/* Flèche bleue qui pointe VERS le centre */}
           <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 z-40">
             <svg width="64" height="40" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg">
               {/* pointe en bas = vers le centre */}
