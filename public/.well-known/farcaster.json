@@ -21,5 +21,25 @@
   },
   "baseBuilder": {
     "ownerAddress": "0x1AA3b28FaE7a9b34c74d000A7af3ae42327c0Ee8"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "DailyWheel",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon-wheel-1024.png",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/splash-wheel-200.png",
+    "splashBackgroundColor": "#111111",
+    "description": "Spin the wheel once a day on Base.",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "tags": [
+      "daily",
+      "wheel",
+      "base"
+    ],
+    "subtitle": "Mini app roulette",
+    "primaryCategory": "utility",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app/embed"
   }
 }
