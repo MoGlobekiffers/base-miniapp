@@ -85,7 +85,7 @@ export default function WheelPage(){
           {/* Flèche BLEUE pointant VERS le centre */}
           <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 z-40">
             <svg width="64" height="40" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg">
-              <!-- pointe en bas = vers le centre -->
+              {/* pointe en bas = vers le centre */}
               <path d="M32 36 L50 8 H14 Z" fill="#2563eb" stroke="#0b1220" strokeWidth="6" strokeLinejoin="round"/>
             </svg>
           </div>
