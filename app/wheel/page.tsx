@@ -1,4 +1,4 @@
-cat > app/wheel/page.tsx <<'TSX'
+
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConnectWallet, useWallet } from "@coinbase/onchainkit";
