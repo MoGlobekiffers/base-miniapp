@@ -1,27 +1,24 @@
-import ReadyClient from './providers/ReadyClient'
-import type { Metadata } from 'next';
-import './globals.css';
-import { miniapp } from './lib/miniapp';
+cat > app/layout.tsx <<'TSX'
+import "./globals.css";
+import type { Metadata } from "next";
+import { ReactNode } from "react";
+import { OnchainKitProviderClient } from "./OnchainKitProviderClient";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    metadataBase: new URL(miniapp.homeUrl),
-    title: miniapp.name,
-    description: miniapp.description,
-    other: {
-      'fc:miniapp': JSON.stringify({
-        version: miniapp.version, // "1"
-        imageUrl: miniapp.heroImageUrl,
-        button: {
-          title: `Open ${miniapp.name}`,
-          action: { type: 'launch_frame', url: miniapp.homeUrl, name: miniapp.name },
-        },
-      }),
-    },
-  };
-}
+export const metadata: Metadata = {
+  title: "DailyWheel",
+  description: "DailyWheel miniapp on Base / Farcaster",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (<html lang="en"><body>
-        <ReadyClient />{children}</body></html>);
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <OnchainKitProviderClient>
+          {children}
+        </OnchainKitProviderClient>
+      </body>
+    </html>
+  );
 }
+TSX
+

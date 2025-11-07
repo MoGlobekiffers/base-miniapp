@@ -1,5 +1,10 @@
+cat > app/wheel/page.tsx <<'TSX'
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ConnectWallet, useWallet } from "@coinbase/onchainkit";
+
+/* ===== Env flag (dev vs prod) ===== */
+const IS_DEV = process.env.NODE_ENV !== "production";
 
 /* ===== Settings ===== */
 const SEGMENTS = 20;
@@ -15,7 +20,7 @@ const R_IN  = 140;
 /* Radial text (outer -> inner) */
 const R_LABEL_OUT = R_OUT - 26;
 const R_LABEL_IN  = R_IN  + 24;
-const FONT_SIZE   = 22;    // un peu plus petit car 20 segments
+const FONT_SIZE   = 22;    // a bit smaller because 20 segments
 const STROKE_W    = 5;
 
 /* 20 quests mapped to 20 segments (short wheel labels) */
@@ -72,7 +77,12 @@ function wedgePath(Ro:number,Ri:number,a0:number,a1:number){
 function easeOutCubic(t:number){ return 1 - Math.pow(1 - t, 3); }
 
 export default function WheelPage(){
-  const [fid,setFid]=useState("");
+  const { address } = useWallet() as { address?: string | null }; // OnchainKit hook
+
+  /* Identity: wallet (from OnchainKit) + FID (dev test) */
+  const [fid, setFid] = useState("");
+
+  /* Wheel state */
   const [angle,setAngle]=useState(0);           // current angle (deg)
   const [spinning,setSpinning]=useState(false);
   const [result,setResult]=useState<string|null>(null);
@@ -85,18 +95,27 @@ export default function WheelPage(){
   const toRef = useRef(0);
   const durRef = useRef(4200);                  // ms
 
-  /* 1 spin / 24h / FID (for now) */
+  const trimmedFid = fid.trim();
+
+  /* playerId = wallet (prod) / wallet ou FID (dev) */
+  const wallet = address ?? null;
+  const playerId: string | null =
+    wallet
+      ? wallet
+      : (IS_DEV && trimmedFid ? `fid:${trimmedFid}` : null);
+
+  /* 1 spin / 24h / playerId */
   useEffect(()=> {
     const tick = () => {
-      if(!fid) return setCooldown(0);
-      const last = +(localStorage.getItem(`dw:lastSpin:${fid}`) || 0);
+      if(!playerId) return setCooldown(0);
+      const last = +(localStorage.getItem(`dw:lastSpin:${playerId}`) || 0);
       const left = Math.max(0, 24*3600*1000 - (Date.now()-last));
       setCooldown(Math.ceil(left/1000));
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [fid]);
+  }, [playerId]);
 
   const segments = useMemo(() => (
     Array.from({length: SEGMENTS}, (_,i) => ({
@@ -117,7 +136,12 @@ export default function WheelPage(){
   }
 
   function canSpin(){
-    if(!fid.trim()) return { ok:false, reason:"Enter a FID to spin" };
+    if(!playerId) {
+      if (IS_DEV) {
+        return { ok:false, reason:"Connect a wallet (or use FID in dev) to spin" };
+      }
+      return { ok:false, reason:"Connect a wallet to spin" };
+    }
     if(cooldown>0)  return { ok:false, reason:`Next spin in ${fmtHMS(cooldown)}` };
     return { ok:true, reason:"" };
   }
@@ -138,9 +162,11 @@ export default function WheelPage(){
       const seg = segments[idx];
       setResult(seg?.label ?? null);
       setSpinning(false);
-      if(fid.trim()){
-        localStorage.setItem(`dw:lastSpin:${fid}`,String(Date.now()));
+      if(playerId){
+        localStorage.setItem(`dw:lastSpin:${playerId}`,String(Date.now()));
         setCooldown(24*3600);
+      } else {
+        setCooldown(0);
       }
     }
   }
@@ -163,27 +189,69 @@ export default function WheelPage(){
     if (animRef.current) cancelAnimationFrame(animRef.current);
   }, []);
 
+  function clearIdentity(){
+    setFid("");
+    setCooldown(0);
+    // note: le disconnect wallet se fera via UI OnchainKit si nécessaire
+  }
+
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-3xl md:text-4xl font-semibold text-center mb-6">
+        <h1 className="text-3xl md:text-4xl font-semibold text-center mb-3">
           DailyWheel
         </h1>
 
+        {/* Identity status + ConnectWallet */}
+        <div className="flex flex-col items-center gap-2 mb-4 text-sm text-white/80">
+          <div className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 flex flex-col items-center gap-1">
+            <div>
+              {wallet ? (
+                <span>
+                  Connected wallet:{" "}
+                  <span className="font-mono text-xs">
+                    {wallet.slice(0,6)}...{wallet.slice(-4)}
+                  </span>
+                </span>
+              ) : playerId ? (
+                <span>
+                  Dev identity (FID):{" "}
+                  <span className="font-mono text-xs">{trimmedFid}</span>
+                </span>
+              ) : (
+                <span>No identity yet – connect wallet{IS_DEV ? " or use FID (dev)" : ""}.</span>
+              )}
+            </div>
+            <ConnectWallet />
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {(wallet || trimmedFid) && (
+              <button
+                onClick={clearIdentity}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-xs font-medium hover:bg-white/20 border border-white/10 transition"
+              >
+                Clear dev FID
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Controls */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-          <input
-            value={fid}
-            onChange={(e)=>setFid(e.target.value.replace(/[^0-9]/g,""))}
-            placeholder="FID (e.g., 1234)"
-            className="px-4 py-2 rounded-lg bg-white/10 border border-white/10 outline-none"
-            inputMode="numeric"
-          />
+          {IS_DEV && (
+            <input
+              value={fid}
+              onChange={(e)=>setFid(e.target.value.replace(/[^0-9]/g,""))}
+              placeholder="FID (dev only, e.g., 1234)"
+              className="px-4 py-2 rounded-lg bg-white/10 border border-white/10 outline-none"
+              inputMode="numeric"
+            />
+          )}
           <button
             onClick={spin}
             disabled={spinning || !canSpin().ok}
-            className="px-6 py-3 rounded-xl bg-white text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow"
-            title={!canSpin().ok ? canSpin().reason : "Spin the wheel"}
+            className="px-6 py-3 rounded-xl bg白 text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow"
+            title={canSpin().reason || "Spin the wheel"}
           >
             {spinning ? "Spinning..." : "Spin"}
           </button>
@@ -195,11 +263,13 @@ export default function WheelPage(){
         </div>
 
         <div className="text-center text-white/60 text-sm mb-4">
-          {fid
+          {playerId
             ? (cooldown>0
                 ? `Next spin in ${fmtHMS(cooldown)}`
                 : "You can spin")
-            : "Enter a FID to spin"}
+            : (IS_DEV
+                ? "Connect a wallet or enter a FID (dev) to spin"
+                : "Connect a wallet to spin")}
         </div>
 
         {/* WHEEL */}
@@ -251,8 +321,7 @@ export default function WheelPage(){
                     <path
                       id={`rad-${s.i}`}
                       key={`rad-${s.i}`}
-                      d={`M ${pOut.x} ${pOut.y} L ${pIn.x} ${pIn.y}`}
-                    />
+                      d={`M ${pOut.x} ${pOut.y} L ${pIn.x} ${pIn.y}`} />
                   );
                 })}
               </defs>
@@ -326,3 +395,4 @@ export default function WheelPage(){
     </main>
   );
 }
+TSX
