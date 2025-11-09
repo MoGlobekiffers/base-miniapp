@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "^1.1.1",
+    "@coinbase/onchainkit": "^1.1.2",
     "@farcaster/miniapp-sdk": "^0.2.1",
     "@vercel/kv": "^1.0.1",
     "@vercel/og": "^0.8.5",

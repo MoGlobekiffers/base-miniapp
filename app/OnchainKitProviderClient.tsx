@@ -1,22 +1,18 @@
 "use client";
 
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { OnchainKitProvider } from "@coinbase/onchainkit";
+import { base } from "wagmi/chains";
 
-export function OnchainKitProviderClient({ children }: { children: ReactNode }) {
+type Props = {
+  children: ReactNode;
+};
+
+export default function OnchainKitProviderClient({ children }: Props) {
   return (
     <OnchainKitProvider
       apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
-      chain={{
-        id: 8453,
-        name: "Base",
-        // structure compatible avec le type Chain (rpcUrls au lieu de rpcUrl)
-        rpcUrls: {
-          default: {
-            http: ["https://mainnet.base.org"],
-          },
-        },
-      } as any}
+      chain={base}
       config={{
         appearance: { theme: "dark" },
       }}
@@ -25,3 +21,4 @@ export function OnchainKitProviderClient({ children }: { children: ReactNode }) 
     </OnchainKitProvider>
   );
 }
+
