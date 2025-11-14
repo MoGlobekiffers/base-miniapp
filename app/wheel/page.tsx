@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect } from "wagmi";
 
-// Quiz pools
 import type { QuizQuestion } from "./quizPools";
 import {
   getRandomBaseQuiz,
@@ -12,7 +11,6 @@ import {
   getRandomMiniAppQuiz,
 } from "./quizPools";
 
-// Brain
 import { useBrain, addBrain, setDoubleNext } from "../brain";
 
 /* =======================
@@ -28,7 +26,7 @@ const QUESTS: string[] = [
   "Reply Sprint",
   "Invite & Share",
   "Test a top mini app",
-  "Bonus Spin",
+  "Bonus spin",
   "Meme Factory",
   "Mint my NFT Free",
   "Mini apps mashup",
@@ -58,96 +56,87 @@ const COLORS = [
 ];
 const BG_COLOR = "#020617";
 
-// Wheel dimensions
 const R_OUT = 260;
 const R_IN = 78;
 
-// Pointer angle (arrow drawn at the top, pointing down)
 const POINTER_ANGLE = 0;
 
-// Spin & cooldown
 const SPIN_DURATION_MS = 4500;
 const COOLDOWN_SEC = 24 * 3600;
 
-// Dev mode
 const DEV_MODE =
-  (typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_DW_DEV === "1") ||
-  (typeof window !== "undefined" &&
-    window.location.hostname === "localhost");
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1") ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost");
 
 /* =======================
- *  Brain points table
+ *  Brain points
  * ======================= */
 
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5,
   "Farcaster Flash Quiz": 5,
-  "Mini app quiz": 4,
+  "Mini app quiz": 5,
   "Cast Party": 3,
   "Like Storm": 3,
   "Reply Sprint": 3,
   "Invite & Share": 3,
   "Test a top mini app": 4,
-  "Bonus Spin": 1, // 1 Brain + respin
+  "Bonus spin": 1,
   "Meme Factory": 4,
   "Mint my NFT Free": 5,
   "Mini apps mashup": 4,
   "Crazy promo": 4,
-  "Bankruptcy": -20,
+  Bankruptcy: -20,
   "Creative #gm": 3,
   "Daily check-in": 2,
-  "Mystery Challenge": 5,
-  "Bonus spin": 1, // 1 Brain + respin
+  "Mystery Challenge": 4,
   "Double points": 0,
   "Web3 Survivor": 8,
 };
 
 /* =======================
- *  Quest descriptions (EN)
+ *  Quest descriptions
  * ======================= */
 
 const QUEST_DESCRIPTIONS: Record<string, string> = {
   "Base Speed Quiz":
-    "Answer a quick question about Base to prove you really know the ecosystem.",
+    "Open the Base Speed Quiz card below and answer the multiple-choice question. One try only. A correct answer awards Brain points.",
   "Farcaster Flash Quiz":
-    "Answer a fast question about Farcaster, its frames, and the culture around the protocol.",
+    "Open the Farcaster Flash Quiz card below and answer the question about the social protocol. One shot: get it right to earn Brain.",
   "Mini app quiz":
-    "Answer a question about mini apps / frames to better understand how they work onchain.",
+    "Answer the question about mini apps and frames on Base and Farcaster. One correct answer = Brain points.",
   "Cast Party":
-    "Post a fun or useful cast about onchain life, a mini app you like, or something you are building.",
+    "Post one fun cast that mentions at least one mini app or onchain action. Make it playful, not spammy.",
   "Like Storm":
-    "Like several relevant casts (for example about mini apps or Base) to support builders and creators.",
+    "Like at least 10 casts in your favorite channels to spread some love across the feed.",
   "Reply Sprint":
-    "Reply to a few casts with real value (tips, ideas, feedback) — not just a random emoji.",
+    "Reply to 5 different casts with something useful, kind, or funny. No low-effort spam.",
   "Invite & Share":
-    "Invite someone to discover Farcaster or share a link to this mini app with a new person.",
+    "Invite a friend to try a mini app or Farcaster, then share the link or a quick screenshot with them.",
   "Test a top mini app":
-    "Open a popular mini app, really use it, and perform at least one meaningful action inside.",
-  "Bonus Spin":
-    "You gain 1 Brain and the right to respin the wheel today. Choose your next spin wisely.",
-  "Meme Factory":
-    "Create or share a real web3/Base/Farcaster meme (not just a random picture) and cast it.",
-  "Mint my NFT Free":
-    "Mint a free or low-cost NFT related to the ecosystem (mini app, fun collection, badge, etc.).",
-  "Mini apps mashup":
-    "Imagine a funny fusion of two mini apps and share the idea in a cast or description.",
-  "Crazy promo":
-    "Make a humorous or over-the-top promotion about any mini app of your choice. Go all-in on the hype.",
-  "Bankruptcy":
-    "Ouch… you lose 20 Brain. Optionally share your worst onchain mistake or ‘rug’ story and laugh it off.",
-  "Creative #gm":
-    "Post a creative #gm (image, phrase, joke, or mini story) connected to Base or Farcaster.",
-  "Daily check-in":
-    "Cast a simple daily check-in telling what you’ll explore, test, or build onchain today.",
-  "Mystery Challenge":
-    "Invent your own mini-challenge for today (e.g. test a brand new frame, follow a new builder, etc.).",
+    "Open a popular mini app, try a real action (mint, vote, play, etc.) and note what you liked or disliked.",
   "Bonus spin":
-    "You gain 1 Brain and the right to respin the wheel again today. Second chance unlocked.",
+    "You win +1 Brain and an extra spin of the wheel. Use your free spin wisely.",
+  "Meme Factory":
+    "Create and post a new onchain or crypto meme (image, text, or frame) and share it on Farcaster.",
+  "Mint my NFT Free":
+    "Mint a free or low-cost NFT on Base today and keep it as a small onchain souvenir.",
+  "Mini apps mashup":
+    "Imagine a funny fusion of two existing mini apps and describe it in one cast.",
+  "Crazy promo":
+    "Write an over-the-top, funny promotional cast for the mini app of your choice.",
+  Bankruptcy:
+    "Oh no! You lose 20 Brain points. Take a breath, then plan your comeback with the next quests.",
+  "Creative #gm":
+    "Post an original ‘gm’ cast with a twist: image, joke, drawing, or onchain action.",
+  "Daily check-in":
+    "Cast a short update about what you plan to build, learn, or test today onchain.",
+  "Mystery Challenge":
+    "Invent your own small onchain or social challenge for today, complete it, and write a short recap.",
   "Double points":
-    "Activate x2 Brain for your next validated quest. Pick a juicy quest before you claim.",
+    "Your next validated quest will give double Brain points. Pick a good one to cash in.",
   "Web3 Survivor":
-    "Complete a slightly ‘hardcore’ action: long thread, deep mini app test, or useful debugging session.",
+    "Do 3 different web3 actions today (cast, like, mint, play a mini app) and survive the chaos.",
 };
 
 /* =======================
@@ -192,28 +181,20 @@ export default function WheelPage() {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
 
-  // Brain
   const { brain, refresh, hasDouble } = useBrain(address);
 
-  // main states
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState<number>(0);
 
-  // quiz
-  const [activeQuiz, setActiveQuiz] = useState<QuizQuestion | null>(
+  const [activeQuiz, setActiveQuiz] = useState<QuizQuestion | null>(null);
+  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
+  const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(
     null
   );
-  const [selectedChoice, setSelectedChoice] = useState<number | null>(
-    null
-  );
-  const [quizResult, setQuizResult] = useState<
-    "correct" | "wrong" | null
-  >(null);
 
-  // claim guard
   const [claimed, setClaimed] = useState(false);
 
   useEffect(() => {
@@ -258,10 +239,7 @@ export default function WheelPage() {
         setCooldown(0);
         return;
       }
-      const left = Math.max(
-        0,
-        COOLDOWN_SEC * 1000 - (Date.now() - last)
-      );
+      const left = Math.max(0, COOLDOWN_SEC * 1000 - (Date.now() - last));
       setCooldown(Math.ceil(left / 1000));
     };
     tick();
@@ -291,22 +269,12 @@ export default function WheelPage() {
 
     window.setTimeout(() => {
       const final = ((finalRotation % 360) + 360) % 360;
-      const normalized =
-        ((POINTER_ANGLE - final) % 360 + 360) % 360;
-      const idx =
-        Math.floor(normalized / anglePerSegment) % SEGMENTS;
+      const normalized = ((POINTER_ANGLE - final) % 360 + 360) % 360;
+      const idx = Math.floor(normalized / anglePerSegment) % SEGMENTS;
 
       const questLabel = QUESTS[idx];
       setResult(questLabel);
 
-      // automatic loss for Bankruptcy
-      if (address && questLabel === "Bankruptcy") {
-        addBrain(address, "Bankruptcy", -20);
-        setClaimed(true);
-        refresh();
-      }
-
-      // prepare quiz if needed
       if (questLabel === "Base Speed Quiz") {
         setActiveQuiz(getRandomBaseQuiz());
       } else if (questLabel === "Farcaster Flash Quiz") {
@@ -317,15 +285,31 @@ export default function WheelPage() {
         setActiveQuiz(null);
       }
 
-      // activate x2 for next gain
       if (address && questLabel === "Double points") {
         setDoubleNext(address);
       }
 
-      // store timestamp (prod only)
+      if (address && questLabel === "Bonus spin") {
+        const base = QUEST_POINTS["Bonus spin"] ?? 0;
+        if (base !== 0) {
+          addBrain(address, "Bonus spin", base);
+          setClaimed(true);
+          refresh();
+        }
+      }
+
+      if (address && questLabel === "Bankruptcy") {
+        const base = QUEST_POINTS["Bankruptcy"] ?? 0;
+        addBrain(address, "Bankruptcy", base);
+        setClaimed(true);
+        refresh();
+      }
+
       if (address && !DEV_MODE) {
         const key = `dw:lastSpin:${address.toLowerCase()}`;
-        localStorage.setItem(key, String(Date.now()));
+        if (questLabel !== "Bonus spin") {
+          localStorage.setItem(key, String(Date.now()));
+        }
       }
 
       setSpinning(false);
@@ -348,31 +332,14 @@ export default function WheelPage() {
           : activeQuiz.category === "farcaster"
           ? "Farcaster Flash Quiz"
           : "Mini app quiz");
-      const base = QUEST_POINTS[questName] ?? 4;
 
+      const base = QUEST_POINTS[questName] ?? 4;
       addBrain(address, questName, base);
       setClaimed(true);
       refresh();
     }
   };
 
-  /* New question, same topic (plus utilisé en UI, mais on garde si besoin futur) */
-  const newQuestionSameTopic = () => {
-    if (!activeQuiz) return;
-    let q: QuizQuestion;
-    if (activeQuiz.category === "base") {
-      q = getRandomBaseQuiz();
-    } else if (activeQuiz.category === "farcaster") {
-      q = getRandomFarcasterQuiz();
-    } else {
-      q = getRandomMiniAppQuiz();
-    }
-    setActiveQuiz(q);
-    setSelectedChoice(null);
-    setQuizResult(null);
-  };
-
-  /* Cooldown label */
   const cooldownLabel = useMemo(() => {
     if (!address) return "Connect your wallet to start";
     if (DEV_MODE) return "DEV mode: unlimited spins";
@@ -405,13 +372,26 @@ export default function WheelPage() {
     setCooldown(0);
   };
 
+  const canSpin =
+    !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
+
+  const showClaimPanel =
+    result &&
+    ![
+      "Base Speed Quiz",
+      "Farcaster Flash Quiz",
+      "Mini app quiz",
+      "Bonus spin",
+      "Bankruptcy",
+      "Double points",
+    ].includes(result);
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-10 px-4">
       <h1 className="text-5xl font-extrabold tracking-tight mb-4">
         DailyWheel
       </h1>
 
-      {/* Address + Brain + Disconnect */}
       <div className="mb-4 flex flex-col items-center gap-2">
         {address ? (
           <>
@@ -436,25 +416,7 @@ export default function WheelPage() {
         )}
       </div>
 
-      {/* Spin / Reset dev */}
       <div className="flex items-center gap-3 mb-2">
-        <button
-          onClick={handleSpin}
-          disabled={
-            spinning ||
-            (!DEV_MODE && (cooldown > 0 || !address)) ||
-            !address
-          }
-          className={`px-6 py-2 rounded-xl text-base font-semibold transition ${
-            spinning ||
-            (!DEV_MODE && (cooldown > 0 || !address))
-              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-              : "bg-slate-100 text-slate-900 hover:bg-white"
-          }`}
-        >
-          {spinning ? "Spinning…" : "Spin"}
-        </button>
-
         {DEV_MODE && address && (
           <button
             onClick={resetDaily}
@@ -465,26 +427,23 @@ export default function WheelPage() {
         )}
       </div>
 
-      <span className="text-xs text-slate-400 mb-4">
-        {cooldownLabel}
-      </span>
+      <span className="text-xs text-slate-400 mb-4">{cooldownLabel}</span>
 
-      {/* HAVE TO DO + description + quiz panel */}
       <div className="w-full max-w-xl mb-4">
         <div className="text-center mb-3">
           {result ? (
             <>
-              <div className="text-sm font-semibold">
-                Have to do:{" "}
-                <span className="font-bold">{result}</span>
+              <div className="text-xs uppercase tracking-wide text-slate-400">
+                Have to do
               </div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className="text-base font-semibold">{result}</div>
+              <div className="mt-1 text-xs text-slate-400 max-w-xl mx-auto">
                 {QUEST_DESCRIPTIONS[result] ??
-                  "Complete this quest today to validate it and earn Brain points."}
+                  "Complete this quest in your own way today."}
               </div>
             </>
           ) : (
-            <span className="text-slate-400">
+            <span className="text-slate-400 text-sm">
               Spin the wheel to get today&apos;s quest
             </span>
           )}
@@ -514,16 +473,13 @@ export default function WheelPage() {
               </div>
             </div>
 
-            <p className="text-sm font-medium mb-3">
-              {activeQuiz.question}
-            </p>
+            <p className="text-sm font-medium mb-3">{activeQuiz.question}</p>
 
             <div className="flex flex-col gap-2">
               {activeQuiz.choices.map((choice, idx) => {
                 const isSelected = selectedChoice === idx;
                 const isCorrect =
-                  quizResult === "correct" &&
-                  idx === activeQuiz.correctIndex;
+                  quizResult === "correct" && idx === activeQuiz.correctIndex;
                 const isWrongSelected =
                   quizResult === "wrong" && isSelected;
                 return (
@@ -542,9 +498,7 @@ export default function WheelPage() {
                           ? "border-slate-300 bg-slate-100 text-slate-900"
                           : "border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
                       }
-                      ${
-                        quizResult ? "cursor-default" : "cursor-pointer"
-                      }
+                      ${quizResult ? "cursor-default" : "cursor-pointer"}
                     `}
                   >
                     {choice}
@@ -561,44 +515,39 @@ export default function WheelPage() {
 
             {!quizResult && (
               <p className="mt-3 text-[11px] text-slate-500">
-                Pick one answer. Only one shot 😄
+                Pick one answer. One shot for Brain points.
               </p>
             )}
           </div>
         )}
       </div>
 
-      {/* Manual claim for non-quiz quests (except Bankruptcy) */}
-      {result &&
-        result !== "Base Speed Quiz" &&
-        result !== "Farcaster Flash Quiz" &&
-        result !== "Mini app quiz" &&
-        result !== "Bankruptcy" && (
-          <div className="w-full max-w-xl mb-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center justify-between">
-              <div className="text-sm">
-                <div className="font-medium">Quest action</div>
-                <div className="text-xs text-slate-400">
-                  {hasDouble
-                    ? "Double points is active for this wallet."
-                    : "Click to validate and earn Brain."}
-                </div>
+      {showClaimPanel && (
+        <div className="w-full max-w-xl mb-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center justify-between">
+            <div className="text-sm">
+              <div className="font-medium">Quest action</div>
+              <div className="text-xs text-slate-400">
+                {hasDouble
+                  ? "Double points is active for this wallet."
+                  : "Click when you have completed the quest to earn Brain."}
               </div>
-              <button
-                disabled={
-                  !address ||
-                  claimed ||
-                  (QUEST_POINTS[result] ?? 0) <= 0
-                }
-                onClick={() => {
-                  if (!address) return;
-                  const base = QUEST_POINTS[result] ?? 0;
-                  if (base <= 0) return;
-                  addBrain(address, result, base);
-                  setClaimed(true);
-                  refresh();
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition
+            </div>
+            <button
+              disabled={
+                !address ||
+                claimed ||
+                (QUEST_POINTS[result] ?? 0) <= 0
+              }
+              onClick={() => {
+                if (!address || !result) return;
+                const base = QUEST_POINTS[result] ?? 0;
+                if (base <= 0) return;
+                addBrain(address, result, base);
+                setClaimed(true);
+                refresh();
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition
                   ${
                     !address ||
                     claimed ||
@@ -606,18 +555,16 @@ export default function WheelPage() {
                       ? "bg-slate-700 text-slate-400 cursor-not-allowed"
                       : "bg-emerald-500 text-white hover:bg-emerald-400"
                   }`}
-              >
-                {claimed
-                  ? "Claimed ✓"
-                  : `Validate (+${QUEST_POINTS[result] ?? 0} 🧠)`}
-              </button>
-            </div>
+            >
+              {claimed
+                ? "Claimed ✓"
+                : `Validate (+${QUEST_POINTS[result] ?? 0} 🧠)`}
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-      {/* Arrow + wheel */}
       <div className="relative w-[640px] h-[640px] max-w-full">
-        {/* Arrow */}
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
           style={{ top: POINTER_Y }}
@@ -633,18 +580,12 @@ export default function WheelPage() {
           </svg>
         </div>
 
-        {/* Wheel */}
         <svg
           viewBox="-300 -300 600 600"
           className="w-full h-full drop-shadow-[0_0_40px_rgba(15,23,42,0.8)]"
         >
           <circle r={R_OUT + 10} fill={BG_COLOR} />
-          <circle
-            r={R_OUT + 6}
-            fill="none"
-            stroke="#020617"
-            strokeWidth={6}
-          />
+          <circle r={R_OUT + 6} fill="none" stroke="#020617" strokeWidth={6} />
 
           <g
             style={{
@@ -654,7 +595,6 @@ export default function WheelPage() {
               transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`,
             }}
           >
-            {/* Segments */}
             {Array.from({ length: SEGMENTS }, (_, i) => {
               const a0 = i * (360 / SEGMENTS);
               const a1 = (i + 1) * (360 / SEGMENTS);
@@ -669,7 +609,6 @@ export default function WheelPage() {
               );
             })}
 
-            {/* Labels */}
             {Array.from({ length: SEGMENTS }, (_, i) => {
               const a0 = i * anglePerSegment;
               const mid = a0 + anglePerSegment / 2;
@@ -685,7 +624,7 @@ export default function WheelPage() {
                     fill="#ffffff"
                     stroke="#020617"
                     strokeWidth={0.9}
-                    fontSize="12"
+                    fontSize="15"
                     fontWeight={700}
                     paintOrder="stroke"
                   >
@@ -695,7 +634,6 @@ export default function WheelPage() {
               );
             })}
 
-            {/* Center */}
             <circle
               r={R_IN - 12}
               fill={BG_COLOR}
@@ -704,6 +642,28 @@ export default function WheelPage() {
             />
           </g>
         </svg>
+
+        {/* Spin button in the center, on top of the logo */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <button
+            onClick={handleSpin}
+            disabled={!canSpin}
+            className={`pointer-events-auto rounded-full focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+              !canSpin ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+            }`}
+          >
+            <div className="relative">
+              <img
+                src="/base-logo-in-blue.png"
+                alt="Spin on Base"
+                className="w-40 h-40 rounded-full shadow-2xl"
+              />
+              <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white drop-shadow-[0_0_6px_rgba(0,0,0,0.7)]">
+                Spin
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
 
       <p className="mt-6 text-xs text-slate-500 max-w-md text-center">
