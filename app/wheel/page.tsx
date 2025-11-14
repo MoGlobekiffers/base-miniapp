@@ -62,7 +62,7 @@ const R_IN = 78;
 const POINTER_ANGLE = 0;
 
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 24 * 3600;
+const COOLDOWN_SEC = 12 * 3600;
 
 const DEV_MODE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1") ||
@@ -667,7 +667,7 @@ export default function WheelPage() {
       </div>
 
       <p className="mt-6 text-xs text-slate-500 max-w-md text-center">
-        1 spin per day per wallet. DEV mode disables the limit locally.
+        1 spin every 12 hours per wallet. DEV mode disables the limit locally.
       </p>
     </main>
   );
