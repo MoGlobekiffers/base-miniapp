@@ -29,7 +29,7 @@ export default function Leaderboard() {
           event: parseAbiItem(
             "event ScoreUpdated(address indexed user, uint256 newTotal)"
           ),
-          fromBlock: 38609587n,
+          fromBlock: BigInt(38609587),
         });
 
         // 2. Traiter les données : on veut le DERNIER score connu par joueur
