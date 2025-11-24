@@ -1,8 +1,9 @@
 "use client";
 
+import Leaderboard from "../components/Leaderboard";
 import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useWalletClient } from "wagmi"; // <--- AJOUT useWalletClient
 
 import type { QuizQuestion } from "./quizPools";
 import {
@@ -13,8 +14,13 @@ import {
 
 import { useBrain, addBrain, setDoubleNext } from "../brain";
 
+// 🔗 Onchain + signature
+import { createPublicClient, http } from "viem"; // On retire createWalletClient/custom car on utilise celui de wagmi
+import { base } from "viem/chains";
+import BrainScoreSigned from "@/types/BrainScoreSigned.json";
+
 /* =======================
- *  Quests & appearance
+ * Quests & appearance
  * ======================= */
 
 const QUESTS: string[] = [
@@ -63,13 +69,12 @@ const POINTER_ANGLE = 0;
 
 const SPIN_DURATION_MS = 4500;
 const COOLDOWN_SEC = 12 * 3600;
-
 const DEV_MODE =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1") ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost");
+  typeof process !== "undefined" &&
+  process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 /* =======================
- *  Brain points
+ * Brain points
  * ======================= */
 
 const QUEST_POINTS: Record<string, number> = {
@@ -95,7 +100,7 @@ const QUEST_POINTS: Record<string, number> = {
 };
 
 /* =======================
- *  Quest descriptions
+ * Quest descriptions
  * ======================= */
 
 const QUEST_DESCRIPTIONS: Record<string, string> = {
@@ -140,7 +145,7 @@ const QUEST_DESCRIPTIONS: Record<string, string> = {
 };
 
 /* =======================
- *  Geometry helpers
+ * Geometry helpers
  * ======================= */
 
 function deg2rad(d: number) {
@@ -174,12 +179,99 @@ function wedgePath(
 }
 
 /* =======================
- *  Page component
+ * Onchain helpers
+ * ======================= */
+
+// Récupérer le nonce du joueur à partir du contrat
+async function getPlayerNonce(player: string) {
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+  });
+
+  const [total, quests] = (await publicClient.readContract({
+    address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+    abi: BrainScoreSigned.abi,
+    functionName: "getPlayer",
+    args: [player],
+  })) as readonly [bigint, bigint];
+
+  return Number(quests) + 1;
+}
+
+// Appel à l’API backend pour signer le Reward
+async function signReward(
+  player: string,
+  questId: string,
+  delta: number,
+  nonce: number
+) {
+  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+
+  const res = await fetch("/api/brain-sign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player,
+      questId,
+      delta,
+      nonce,
+      deadline,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to sign reward");
+  }
+
+  return { signature: data.signature as `0x${string}`, deadline };
+}
+
+// Envoi de la transaction claim() sur Base
+async function sendClaim(
+  walletClient: any,
+  delta: number,
+  nonce: number,
+  deadline: number,
+  signature: `0x${string}`,
+  userAddress: `0x${string}`
+) {
+  try {
+    if(walletClient.chain?.id !== base.id) {
+       await walletClient.switchChain({ id: base.id });
+    }
+  } catch (e) {
+    console.log("Chain switch skipped or failed", e);
+  }
+
+  // Calcul pour le contrat :
+  // Si c'est -20, on envoie 20 et true (isNegative)
+  // Si c'est +5, on envoie 5 et false
+  const isNegative = delta < 0;
+  const absAmount = BigInt(Math.abs(delta));
+
+  const hash = await walletClient.writeContract({
+    account: userAddress,
+    address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+    abi: BrainScoreSigned.abi,
+    functionName: "claim",
+    // Note bien le "isNegative" ajouté en 2ème position
+    args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
+  });
+
+  return hash;
+}
+
+/* =======================
+ * Page component
  * ======================= */
 
 export default function WheelPage() {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
+  // 👇 C'est ICI la magie : on récupère le client connecté (Smart Wallet)
+  const { data: walletClient } = useWalletClient(); 
 
   const { brain, refresh, hasDouble } = useBrain(address);
 
@@ -289,22 +381,6 @@ export default function WheelPage() {
         setDoubleNext(address);
       }
 
-      if (address && questLabel === "Bonus spin") {
-        const base = QUEST_POINTS["Bonus spin"] ?? 0;
-        if (base !== 0) {
-          addBrain(address, "Bonus spin", base);
-          setClaimed(true);
-          refresh();
-        }
-      }
-
-      if (address && questLabel === "Bankruptcy") {
-        const base = QUEST_POINTS["Bankruptcy"] ?? 0;
-        addBrain(address, "Bankruptcy", base);
-        setClaimed(true);
-        refresh();
-      }
-
       if (address && !DEV_MODE) {
         const key = `dw:lastSpin:${address.toLowerCase()}`;
         if (questLabel !== "Bonus spin") {
@@ -316,30 +392,19 @@ export default function WheelPage() {
     }, SPIN_DURATION_MS);
   };
 
-  /* Quiz answer */
+/* Quiz answer */
   const handleAnswer = (index: number) => {
+    // Si pas de quiz ou déjà répondu, on arrête
     if (!activeQuiz || quizResult) return;
 
     const isCorrect = index === activeQuiz.correctIndex;
     setSelectedChoice(index);
     setQuizResult(isCorrect ? "correct" : "wrong");
 
-    if (isCorrect && address && !claimed) {
-      const questName =
-        result ??
-        (activeQuiz.category === "base"
-          ? "Base Speed Quiz"
-          : activeQuiz.category === "farcaster"
-          ? "Farcaster Flash Quiz"
-          : "Mini app quiz");
-
-      const base = QUEST_POINTS[questName] ?? 4;
-      addBrain(address, questName, base);
-      setClaimed(true);
-      refresh();
-    }
+    // 🛑 ON A SUPPRIMÉ LE RESTE DU CODE ICI
+    // On ne met plus "setClaimed(true)" ici.
+    // On attend que l'utilisateur clique sur le bouton "Validate" qui va apparaître.
   };
-
   const cooldownLabel = useMemo(() => {
     if (!address) return "Connect your wallet to start";
     if (DEV_MODE) return "DEV mode: unlimited spins";
@@ -375,16 +440,20 @@ export default function WheelPage() {
   const canSpin =
     !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
 
+// Vérifie si c'est un quiz
+  const isQuiz = [
+    "Base Speed Quiz", 
+    "Farcaster Flash Quiz", 
+    "Mini app quiz"
+  ].includes(result || "");
+
+  // Combien de points vaut la quête actuelle ?
+  const currentPoints = result ? (QUEST_POINTS[result] ?? 0) : 0;
+
   const showClaimPanel =
-    result &&
-    ![
-      "Base Speed Quiz",
-      "Farcaster Flash Quiz",
-      "Mini app quiz",
-      "Bonus spin",
-      "Bankruptcy",
-      "Double points",
-    ].includes(result);
+    result &&                           // 1. La roue a tourné
+    currentPoints !== 0 &&              // 2. Ça vaut des points (positifs OU négatifs)
+    (!isQuiz || quizResult === "correct"); // 3. Si c'est un quiz, on attend la victoire
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-10 px-4">
@@ -537,15 +606,45 @@ export default function WheelPage() {
               disabled={
                 !address ||
                 claimed ||
-                (QUEST_POINTS[result] ?? 0) <= 0
+                (QUEST_POINTS[result] ?? 0) <= 0 ||
+                !walletClient // Securité si pas de client
               }
-              onClick={() => {
-                if (!address || !result) return;
-                const base = QUEST_POINTS[result] ?? 0;
-                if (base <= 0) return;
-                addBrain(address, result, base);
-                setClaimed(true);
-                refresh();
+              onClick={async () => {
+                if (!address || !result || !walletClient) return;
+
+                const basePoints = QUEST_POINTS[result] ?? 0;
+                if (basePoints <= 0) return;
+
+                try {
+                  const delta = basePoints;
+                  const nonce = await getPlayerNonce(address);
+                  const { signature, deadline } = await signReward(
+                    address,
+                    result,
+                    delta,
+                    nonce
+                  );
+
+                  // ON PASSE LE WALLET CLIENT CORRECT ICI 👇
+                  const txHash = await sendClaim(
+                    walletClient,
+                    delta,
+                    nonce,
+                    deadline,
+                    signature,
+                    address 
+                  );
+
+                  console.log("Claim tx:", txHash);
+
+                  // miroir local Brain (UI) :
+                  addBrain(address, result, basePoints);
+                  setClaimed(true);
+                  refresh();
+                } catch (err) {
+                  console.error(err);
+                  alert("Error sending onchain claim");
+                }
               }}
               className={`px-3 py-2 rounded-lg text-sm font-semibold transition
                   ${
@@ -669,7 +768,10 @@ export default function WheelPage() {
       <p className="mt-6 text-xs text-slate-500 max-w-md text-center">
         1 spin every 12 hours per wallet. DEV mode disables the limit locally.
       </p>
+{/* --- LEADERBOARD --- */}
+      <div className="w-full flex justify-center z-10">
+        <Leaderboard />
+      </div>
     </main>
   );
 }
-
