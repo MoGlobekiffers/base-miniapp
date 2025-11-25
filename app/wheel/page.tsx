@@ -1,8 +1,8 @@
-
+// Fichier : app/wheel/page.tsx (Côté Serveur - FINAL)
 
 import WheelClientPage from './wheel'; // Importe le composant client renommé
 
-// 🛑 Les METADATA sont exportées ici, côté serveur, pour éviter l'erreur Vercel.
+// 🛑 EXPORT METADATA : C'est ici qu'il doit être, côté serveur.
 export const metadata = {
   title: 'DailyWheel - Gagnez des points sur Base',
   description: 'Faites tourner la roue pour des quêtes quotidiennes et gagnez des Brain Points!',
@@ -18,10 +18,9 @@ export const metadata = {
   'fc:frame:image': 'https://base-miniapp-gamma.vercel.app/images/wheel-preview.png', 
   'fc:frame:post_url': 'https://base-miniapp-gamma.vercel.app/api/frame-handler', 
   'fc:frame:button:1': 'Faire Tourner la Roue ⚡',
-  'fc:frame:button:1:action': 'post', // AJOUTÉ : Action standard lors du clic
 };
 
-// Ceci est le composant par défaut qui rend le composant client
+// Le composant par défaut qui est côté serveur (et qui appelle le client)
 export default function WheelPage() {
   return <WheelClientPage />;
 }
