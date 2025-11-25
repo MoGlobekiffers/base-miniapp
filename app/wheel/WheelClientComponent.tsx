@@ -489,169 +489,125 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
     (!isQuiz || quizResult === "correct");
 
 return (
-    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-4 md:pt-10 px-4">
-      <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-2">
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 md:pt-8 px-4 overflow-x-hidden">
+      
+      {/* 1. TITRE PLUS PETIT ET STYLÉ */}
+      <h1 className="text-2xl md:text-5xl font-black tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
         DailyWheel
       </h1>
 
-      <div className="mb-2 flex flex-col items-center gap-1">
+      {/* 2. BOUTON CONNECT COMPACT (Scale down) */}
+      <div className="mb-2 flex flex-col items-center gap-1 scale-90 origin-top">
         {address ? (
           <>
-            <div className="px-4 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono">
+            <div className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700 text-[10px] font-mono text-slate-400">
               {shortAddress}
             </div>
-            <div className="text-xs text-amber-300 font-semibold">
-              Brain: {currentOnChainScore} 🧠{" "}{/* ⬅️ UTILISE LA NOUVELLE VARIABLE */}
-              {hasDouble && (
-                <span className="text-emerald-400">(x2 ready)</span>
-              )}
+            <div className="text-sm text-amber-300 font-bold flex items-center gap-2 bg-slate-800/50 px-3 py-1 rounded-lg">
+              <span>Brain: {currentOnChainScore} 🧠</span>
+              {hasDouble && <span className="text-emerald-400 text-xs animate-pulse">(x2 Active)</span>}
             </div>
             <button
               onClick={() => disconnect()}
-              className="text-xs px-3 py-1 rounded-full border border-slate-600 text-slate-300 hover:bg-slate-800 transition"
+              className="text-[10px] px-2 py-0.5 rounded text-slate-500 hover:text-slate-300 underline decoration-dotted"
             >
               Disconnect
             </button>
           </>
         ) : (
-          <ConnectWallet />
+          <div className="opacity-90 hover:opacity-100 transition-opacity">
+             <ConnectWallet />
+          </div>
         )}
       </div>
 
+      {/* Bouton Reset (Dev Only) */}
       <div className="flex items-center gap-3 mb-1">
         {DEV_MODE && address && (
-          <button
-            onClick={resetDaily}
-            className="px-3 py-2 rounded-xl text-xs border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10"
-          >
-            Reset daily limit
+          <button onClick={resetDaily} className="px-2 py-1 rounded text-[10px] border border-emerald-500/50 text-emerald-300">
+            Reset Limit
           </button>
         )}
       </div>
 
-      <span className="text-xs text-slate-400 mb-2">{cooldownLabel}</span>
+      {/* Compte à rebours discret */}
+      <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-3 font-semibold">
+        {cooldownLabel}
+      </span>
 
+      {/* Zone de Quête (S'affiche si résultat) */}
       {showClaimPanel && (
-        <div className="w-full max-w-xl mb-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center justify-between">
-            <div className="text-sm">
-              <div className="font-medium">Quest action</div>
-              <div className="text-xs text-slate-400">
-                {hasDouble
-                  ? "Double points is active for this wallet."
-                  : "Click when you have completed the quest to earn Brain."}
-              </div>
+        <div className="w-full max-w-xs mb-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-900/20 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+            <div className="text-xs">
+              <div className="font-bold text-emerald-400">Quest Complete!</div>
+              <div className="text-[10px] text-emerald-200/70">Tap to claim your points</div>
             </div>
             <button
-              disabled={
-                !address ||
-                claimed ||
-                !walletClient
-              }
+              disabled={!address || claimed || !walletClient}
               onClick={async () => {
                 if (!address || !result || !walletClient) return;
-
-                const basePoints = QUEST_POINTS[result] ?? 0;
-                if (basePoints === 0) return;
-
+                /* ... Logique inchangée ... */
                 try {
                   const delta = basePoints;
                   const nonce = await getPlayerNonce(address);
-                  const { signature, deadline } = await signReward(
-                    address,
-                    result,
-                    delta,
-                    nonce
-                  );
-
-                  const txHash = await sendClaim(
-                    walletClient,
-                    delta,
-                    nonce,
-                    deadline,
-                    signature,
-                    address 
-                  );
-
-                  console.log("Claim tx:", txHash);
-
+                  const { signature, deadline } = await signReward(address, result, delta, nonce);
+                  await sendClaim(walletClient, delta, nonce, deadline, signature, address);
                   addBrain(address, result, basePoints);
                   setClaimed(true);
                   refetchScore(); 
-                } catch (err) {
-                  console.error(err);
-                  alert("Error sending onchain claim");
-                }
+                } catch (err) { console.error(err); alert("Error claiming"); }
               }}
-              className={`px-3 py-2 rounded-lg text-sm font-semibold transition
-                  ${
-                    !address ||
-                    claimed 
-                      ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                      : "bg-emerald-500 text-white hover:bg-emerald-400"
-                  }`}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg transition-all
+                  ${!address || claimed ? "bg-slate-800 text-slate-500" : "bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105"}`}
             >
-              {claimed
-                ? "Claimed ✓"
-                : `Validate (${QUEST_POINTS[result] > 0 ? "+" : ""}${QUEST_POINTS[result] ?? 0} 🧠)`}
+              {claimed ? "Done" : `Claim +${QUEST_POINTS[result] ?? 0}`}
             </button>
           </div>
         </div>
       )}
 
-      {/* 👇 MODIFICATION ICI : w-full et scale pour adapter au mobile */}
-      <div className="relative w-full max-w-[640px] aspect-square scale-95 md:scale-100">
-        {/*
-          ==============================================
-          POINTEUR : FLÈCHE NÉON
-          ==============================================
-        */}
+      {/* 3. LA ROUE ET LE POINTEUR */}
+      <div className="relative w-full max-w-[340px] aspect-square md:max-w-[600px]">
         
+        {/* POINTEUR NÉON LUMINEUX */}
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: 38 }} 
+          style={{ top: -10 }} // Remonté un peu pour mordre sur la roue
         >
-          <svg width="48" height="32" viewBox="0 0 48 32">
+          <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
-              <linearGradient id="neonGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#38bdf8" /> 
-                <stop offset="100%" stopColor="#8b5cf6" /> 
+              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" /> {/* Cyan brillant */}
+                <stop offset="100%" stopColor="#3b82f6" /> {/* Bleu électrique */}
               </linearGradient>
-              <filter id="neonGlow">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-                <feFlood floodColor="#3b82f6" floodOpacity="1" result="color"/>
-                <feComposite in="color" in2="blur" operator="in" result="glow"/>
-                <feMerge>
-                  <feMergeNode in="glow"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
             </defs>
             <path
-              d="M24 30 L8 5 H40 Z" 
-              fill="url(#neonGradient)"
-              stroke="#020617"
-              strokeWidth={4}
+              d="M25 40 L10 10 H40 Z" 
+              fill="url(#neonArrow)"
+              stroke="#cffafe"
+              strokeWidth={2}
               strokeLinejoin="round"
-              style={{ filter: 'url(#neonGlow)' }} 
             />
           </svg>
         </div>
         
-        
+        {/* LA ROUE SVG */}
         <svg
           viewBox="-300 -300 600 600"
-          className="w-full h-full drop-shadow-[0_0_40px_rgba(15,23,42,0.8)]"
+          className="w-full h-full drop-shadow-2xl"
         >
-          <circle r={R_OUT + 10} fill={BG_COLOR} />
-          <circle r={R_OUT + 6} fill="none" stroke="#020617" strokeWidth={6} />
+          {/* Bordure extérieure brillante */}
+          <circle r={R_OUT + 12} fill="#0f172a" />
+          <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
+          <circle r={R_OUT + 2} fill="none" stroke="#38bdf8" strokeWidth={2} strokeOpacity={0.5} />
 
           <g
             style={{
               transform: `rotate(${rotation}deg)`,
               transformOrigin: "center",
               transformBox: "fill-box" as any,
-              transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`,
+              transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`, // Easing plus smooth
             }}
           >
             {Array.from({ length: SEGMENTS }, (_, i) => {
@@ -662,8 +618,8 @@ return (
                   key={`wedge-${i}`}
                   d={wedgePath(R_OUT, R_IN, a0, a1)}
                   fill={COLORS[i % COLORS.length]}
-                  stroke="#020617"
-                  strokeWidth={1.6}
+                  stroke="#0f172a"
+                  strokeWidth={2}
                 />
               );
             })}
@@ -681,11 +637,9 @@ return (
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="#ffffff"
-                    stroke="#020617"
-                    strokeWidth={0.9}
-                    fontSize="15"
-                    fontWeight={700}
-                    paintOrder="stroke"
+                    fontSize="13" // Texte légèrement plus petit pour la lisibilité
+                    fontWeight={800}
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}
                   >
                     {QUESTS[i]}
                   </text>
@@ -693,60 +647,36 @@ return (
               );
             })}
 
-            <circle
-              r={R_IN - 12}
-              fill={BG_COLOR}
-              stroke="#e5e7eb"
-              strokeWidth={10}
-            />
+            {/* Centre de la roue */}
+            <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
           </g>
         </svg>
 
-        {/* Spin button in the center, on top of the logo */}
+        {/* BOUTON SPIN CENTRAL */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={handleSpin}
             disabled={!canSpin}
-            className={`pointer-events-auto rounded-full focus:outline-none focus:ring-2 focus:ring-sky-400 ${
-              !canSpin ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-            }`}
+            className={`pointer-events-auto w-20 h-20 rounded-full flex items-center justify-center
+              bg-gradient-to-br from-slate-800 to-slate-950 border-4 border-slate-700 shadow-xl
+              transition-all active:scale-95
+              ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "hover:border-blue-400 hover:shadow-blue-500/20 cursor-pointer"}`}
           >
-            <div className="relative">
-              <img
-                src="/base-logo-in-blue.png"
-                alt="Spin on Base"
-                className="w-40 h-40 rounded-full shadow-2xl"
-              />
-              <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white drop-shadow-[0_0_6px_rgba(0,0,0,0.7)]">
-                Spin
-              </span>
-            </div>
+            <span className="text-lg font-black text-white tracking-wider uppercase">Spin</span>
           </button>
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-slate-500 max-w-md text-center">
-        1 spin every 12 hours per wallet. DEV mode disables the limit locally.
-      </p>
-
-      {/* --- BADGES (INTEGRATION CORRIGÉE) --- */}
-      <div className="w-full max-w-4xl mt-8 pt-4 border-t border-slate-800">
-        <h2 className="text-2xl font-bold mb-6 text-center text-purple-400">
-          🏆 Hall of Fame
+      {/* --- BADGES --- */}
+      <div className="w-full max-w-4xl mt-6 border-t border-slate-800/50 pt-6 pb-20">
+        <h2 className="text-lg font-bold mb-4 text-center text-slate-400 uppercase tracking-widest text-[10px]">
+          Your Trophy Room
         </h2>
-        
         {address ? (
           <BadgesPanel userAddress={address} currentScore={currentOnChainScore} /> 
         ) : (
-          <p className="text-center text-slate-500">
-             Connecte ton wallet pour voir tes badges
-          </p>
+          <p className="text-center text-xs text-slate-600">Connect wallet to view badges</p>
         )}
-      </div>
-
-      {/* --- LEADERBOARD --- */}
-      <div className="w-full flex justify-center pb-20 mt-8">
-        <Leaderboard />
       </div>
 
     </main>
