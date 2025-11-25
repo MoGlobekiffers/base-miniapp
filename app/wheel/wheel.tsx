@@ -1,4 +1,4 @@
-// Fichier : app/wheel/wheel.tsx (Composant Client Final)
+// Fichier : app/wheel/wheel.tsx (Composant Client Final, SANS metadata)
 
 "use client";
 
@@ -269,31 +269,27 @@ async function sendClaim(
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 
-export default function WheelClientPage() { // 🛑 RENOMMÉ POUR ÊTRE IMPORTÉ DANS PAGE.TSX
+export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient(); 
 
   // 👇 NOUVEAU : Lecture directe de la blockchain pour obtenir le VRAI score
-// Fichier : app/wheel/page.tsx (vers la ligne 279)
-
   const { data: scoreData, refetch: refetchScore } = useReadContract({
     address: BRAIN_CONTRACT,
     abi: BrainScoreSigned.abi, 
     functionName: "getPlayer", 
     args: [address],
-
     query: {
-        staleTime: 0, // Force la vérification
-        enabled: !!address, // ✅ 'enabled' est maintenant dans 'query'
+        staleTime: 0, 
+        enabled: !!address, 
     }
   });
+
   // 👇 Extraction du score réel et assignation des anciennes variables
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
   const brain = currentOnChainScore; 
-  // hasDouble ne peut pas être lu sans le hook useBrain original. On le met à false.
   const hasDouble = false; 
-  // refresh est remplacé par refetchScore
   const refresh = refetchScore; 
   
   

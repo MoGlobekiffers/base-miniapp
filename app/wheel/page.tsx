@@ -1,4 +1,4 @@
-// Fichier : app/wheel/page.tsx (Côté Serveur, SANS "use client")
+
 
 import WheelClientPage from './wheel'; // Importe le composant client renommé
 
