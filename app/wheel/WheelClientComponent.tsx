@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
+import sdk from '@farcaster/frame-sdk';
 
 import type { QuizQuestion } from "./quizPools";
 import {
@@ -270,6 +271,20 @@ const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 
 export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
+  const [isSDKLoaded, setIsSDKLoaded] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      // Signale à Farcaster que le Frame est prêt
+      await sdk.actions.ready(); 
+    };
+    
+    // On le lance uniquement si pas déjà chargé
+    if (sdk && !isSDKLoaded) {
+      setIsSDKLoaded(true);
+      load();
+    }
+  }, [isSDKLoaded]);
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient(); 
