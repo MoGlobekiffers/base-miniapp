@@ -1,45 +1,18 @@
 {
-  "name": "Base Miniapp",
-  "version": "1",
-  "iconUrl": "https://placehold.co/1024x1024/png?bg=111111&text=ICON",
-  "imageUrl": "https://placehold.co/1200x800/png?bg=111111&text=PREVIEW",
-  "homeUrl": "https://base-miniapp-gamma.vercel.app/embed",
-  "splashImageUrl": "https://placehold.co/200x200/png?bg=111111&text=BASE",
-  "splashBackgroundColor": "#111111",
-  "primaryCategory": "utility",
-  "tags": [
-    "demo",
-    "base",
-    "miniapp"
-  ],
-  "publisher": "Your Name",
-  "description": "Miniapp de test avec endpoints healthz/ready",
   "accountAssociation": {
-    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
+    "header": "eyJmaWQiOjM2MjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4N0Q1MThFOGNjNmVmRmYyZjJkYjU3MTliQUU4ZWFkNTM4QzVGOTI1In0",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
-    "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
+    "signature": "MHhhNmRh..."
   },
-  "baseBuilder": {
-    "ownerAddress": "0xc7cB8b0FFdf27f0aaf711D488083970deC419622"
-  },
-  "miniapp": {
+  "frame": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon-wheel-1024.png",
-    "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
-    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/splash-wheel-200.png",
-    "splashBackgroundColor": "#111111",
-    "description": "Spin the wheel once a day on Base.",
-    "requiredChains": [
-      "eip155:8453"
-    ],
-    "tags": [
-      "daily",
-      "wheel",
-      "base"
-    ],
-    "subtitle": "Mini app roulette",
-    "primaryCategory": "utility",
-    "homeUrl": "https://base-miniapp-gamma.vercel.app/embed"
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app/wheel",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "buttonTitle": "Spin ⚡",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "splashBackgroundColor": "#0f172a",
+    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
   }
 }
