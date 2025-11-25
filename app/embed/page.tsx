@@ -1,6 +1,7 @@
 "use client";
-import WheelPage from '../wheel/page';
+import WheelClientComponent from '../wheel/WheelClientComponent'; 
 
-export default function Embed() {
-  return <WheelPage />;
+export default function EmbedPage() {
+  // Utilisez le composant client ici
+  return <WheelClientComponent />;
 }
