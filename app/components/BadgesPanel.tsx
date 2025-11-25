@@ -89,7 +89,7 @@ function BadgeCard({ badge, userAddress, currentScore, writeContract, setLoading
              setLoadingId(null);
           }, 4000); // 4 secondes pour être sûr que la blockchain a indexé
         },
-        onError: (e) => {
+        onError: (e: any) => {
           console.error(e);
           setLoadingId(null);
         }
