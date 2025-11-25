@@ -491,12 +491,12 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
 return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 md:pt-8 px-4 overflow-x-hidden">
       
-      {/* 1. TITRE PLUS PETIT ET STYLÉ */}
+      {/* TITRE */}
       <h1 className="text-2xl md:text-5xl font-black tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
         DailyWheel
       </h1>
 
-      {/* 2. BOUTON CONNECT COMPACT (Scale down) */}
+      {/* BOUTON CONNECT */}
       <div className="mb-2 flex flex-col items-center gap-1 scale-90 origin-top">
         {address ? (
           <>
@@ -521,7 +521,6 @@ return (
         )}
       </div>
 
-      {/* Bouton Reset (Dev Only) */}
       <div className="flex items-center gap-3 mb-1">
         {DEV_MODE && address && (
           <button onClick={resetDaily} className="px-2 py-1 rounded text-[10px] border border-emerald-500/50 text-emerald-300">
@@ -530,12 +529,10 @@ return (
         )}
       </div>
 
-      {/* Compte à rebours discret */}
-      <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-3 font-semibold">
+      <span className="text-xs text-slate-400 mb-3 font-semibold">
         {cooldownLabel}
       </span>
 
-      {/* Zone de Quête (S'affiche si résultat) */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-4 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-900/20 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.2)]">
@@ -549,16 +546,16 @@ return (
                 if (!address || !result || !walletClient) return;
                 const basePoints = QUEST_POINTS[result] ?? 0;
                 if (basePoints === 0) return;
-                /* ... Logique inchangée ... */
                 try {
                   const delta = basePoints;
                   const nonce = await getPlayerNonce(address);
                   const { signature, deadline } = await signReward(address, result, delta, nonce);
                   await sendClaim(walletClient, delta, nonce, deadline, signature, address);
+                  console.log("Claim tx sent");
                   addBrain(address, result, basePoints);
                   setClaimed(true);
                   refetchScore(); 
-                } catch (err) { console.error(err); alert("Error claiming"); }
+                } catch (err) { console.error(err); alert("Error sending onchain claim"); }
               }}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg transition-all
                   ${!address || claimed ? "bg-slate-800 text-slate-500" : "bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105"}`}
@@ -569,19 +566,19 @@ return (
         </div>
       )}
 
-      {/* 3. LA ROUE ET LE POINTEUR */}
+      {/* LA ROUE */}
       <div className="relative w-full max-w-[340px] aspect-square md:max-w-[600px]">
         
-        {/* POINTEUR NÉON LUMINEUX */}
+        {/* POINTEUR NÉON */}
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: -10 }} // Remonté un peu pour mordre sur la roue
+          style={{ top: 30 }} 
         >
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
               <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#22d3ee" /> {/* Cyan brillant */}
-                <stop offset="100%" stopColor="#3b82f6" /> {/* Bleu électrique */}
+                <stop offset="0%" stopColor="#22d3ee" /> 
+                <stop offset="100%" stopColor="#3b82f6" /> 
               </linearGradient>
             </defs>
             <path
@@ -594,12 +591,10 @@ return (
           </svg>
         </div>
         
-        {/* LA ROUE SVG */}
         <svg
           viewBox="-300 -300 600 600"
           className="w-full h-full drop-shadow-2xl"
         >
-          {/* Bordure extérieure brillante */}
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
           <circle r={R_OUT + 2} fill="none" stroke="#38bdf8" strokeWidth={2} strokeOpacity={0.5} />
@@ -609,7 +604,7 @@ return (
               transform: `rotate(${rotation}deg)`,
               transformOrigin: "center",
               transformBox: "fill-box" as any,
-              transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`, // Easing plus smooth
+              transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
             }}
           >
             {Array.from({ length: SEGMENTS }, (_, i) => {
@@ -635,13 +630,14 @@ return (
                   key={`label-${i}`}
                   transform={`rotate(${mid}) translate(0, -${radiusText}) rotate(90)`}
                 >
+                  {/* 👇 TEXTE EN VIOLET FONCÉ POUR LA LISIBILITÉ */}
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#ffffff"
-                    fontSize="13" // Texte légèrement plus petit pour la lisibilité
-                    fontWeight={800}
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}
+                    fill="#2e1065" 
+                    fontSize="14" 
+                    fontWeight={900}
+                    style={{ textShadow: "0 1px 0px rgba(255,255,255,0.2)" }}
                   >
                     {QUESTS[i]}
                   </text>
@@ -654,17 +650,25 @@ return (
           </g>
         </svg>
 
-        {/* BOUTON SPIN CENTRAL */}
+        {/* 👇 RETOUR DU BOUTON LOGO BASE FUN */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={handleSpin}
             disabled={!canSpin}
-            className={`pointer-events-auto w-20 h-20 rounded-full flex items-center justify-center
-              bg-gradient-to-br from-slate-800 to-slate-950 border-4 border-slate-700 shadow-xl
-              transition-all active:scale-95
-              ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "hover:border-blue-400 hover:shadow-blue-500/20 cursor-pointer"}`}
+            className={`pointer-events-auto rounded-full focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-transform active:scale-90
+              ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
           >
-            <span className="text-lg font-black text-white tracking-wider uppercase">Spin</span>
+            <div className="relative w-16 h-16 md:w-24 md:h-24">
+              {/* Assurez-vous que l'image est bien dans public/ */}
+              <img
+                src="/base-logo-in-blue.png" 
+                alt="Spin on Base"
+                className="w-full h-full rounded-full shadow-2xl border-4 border-white/10"
+              />
+              <span className="absolute inset-0 flex items-center justify-center text-lg md:text-2xl font-black text-white drop-shadow-md uppercase tracking-wider">
+                Spin
+              </span>
+            </div>
           </button>
         </div>
       </div>
