@@ -547,6 +547,8 @@ return (
               disabled={!address || claimed || !walletClient}
               onClick={async () => {
                 if (!address || !result || !walletClient) return;
+                const basePoints = QUEST_POINTS[result] ?? 0;
+                if (basePoints === 0) return;
                 /* ... Logique inchangée ... */
                 try {
                   const delta = basePoints;
