@@ -488,13 +488,13 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
     currentPoints !== 0 &&              
     (!isQuiz || quizResult === "correct");
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-10 px-4">
-      <h1 className="text-5xl font-extrabold tracking-tight mb-4">
+return (
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-4 md:pt-10 px-4">
+      <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-2">
         DailyWheel
       </h1>
 
-      <div className="mb-4 flex flex-col items-center gap-2">
+      <div className="mb-2 flex flex-col items-center gap-1">
         {address ? (
           <>
             <div className="px-4 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono">
@@ -518,7 +518,7 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
         )}
       </div>
 
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-1">
         {DEV_MODE && address && (
           <button
             onClick={resetDaily}
@@ -529,10 +529,10 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
         )}
       </div>
 
-      <span className="text-xs text-slate-400 mb-4">{cooldownLabel}</span>
+      <span className="text-xs text-slate-400 mb-2">{cooldownLabel}</span>
 
       {showClaimPanel && (
-        <div className="w-full max-w-xl mb-4">
+        <div className="w-full max-w-xl mb-2">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center justify-between">
             <div className="text-sm">
               <div className="font-medium">Quest action</div>
@@ -577,7 +577,6 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
 
                   addBrain(address, result, basePoints);
                   setClaimed(true);
-                  // La fonction refresh originale du hook est remplacée par le refetch du score
                   refetchScore(); 
                 } catch (err) {
                   console.error(err);
@@ -600,25 +599,24 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
         </div>
       )}
 
-      <div className="relative w-[640px] h-[640px] max-w-full">
+      {/* 👇 MODIFICATION ICI : w-full et scale pour adapter au mobile */}
+      <div className="relative w-full max-w-[640px] aspect-square scale-95 md:scale-100">
         {/*
           ==============================================
-          POINTEUR : FLÈCHE NÉON (NEON ARROW) - OPTION 2
+          POINTEUR : FLÈCHE NÉON
           ==============================================
         */}
         
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: 38 }} // Position ajustée pour la flèche
+          style={{ top: 38 }} 
         >
           <svg width="48" height="32" viewBox="0 0 48 32">
             <defs>
-              {/* Dégradé du Néon : Du cyan au violet */}
               <linearGradient id="neonGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#38bdf8" /> 
                 <stop offset="100%" stopColor="#8b5cf6" /> 
               </linearGradient>
-              {/* Filtre de lueur intense (Néon) */}
               <filter id="neonGlow">
                 <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
                 <feFlood floodColor="#3b82f6" floodOpacity="1" result="color"/>
@@ -630,7 +628,6 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
               </filter>
             </defs>
             <path
-              // Flèche moderne et élancée
               d="M24 30 L8 5 H40 Z" 
               fill="url(#neonGradient)"
               stroke="#020617"
@@ -728,12 +725,12 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
         </div>
       </div>
 
-      <p className="mt-6 text-xs text-slate-500 max-w-md text-center">
+      <p className="mt-4 text-xs text-slate-500 max-w-md text-center">
         1 spin every 12 hours per wallet. DEV mode disables the limit locally.
       </p>
 
       {/* --- BADGES (INTEGRATION CORRIGÉE) --- */}
-      <div className="w-full max-w-4xl mt-12 pt-8 border-t border-slate-800">
+      <div className="w-full max-w-4xl mt-8 pt-4 border-t border-slate-800">
         <h2 className="text-2xl font-bold mb-6 text-center text-purple-400">
           🏆 Hall of Fame
         </h2>
