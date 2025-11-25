@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjM2MjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4N0Q1MThFOGNjNmVmRmYyZjJkYjU3MTliQUU4ZWFkNTM4QzVGOTI1In0",
+    "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
+    "signature": "MHhhNmRh..."
+  },
+  "frame": {
+    "version": "1",
+    "name": "DailyWheel",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app/wheel",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "buttonTitle": "Spin the Wheel",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "splashBackgroundColor": "#0f172a",
+    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
+  }
+}
