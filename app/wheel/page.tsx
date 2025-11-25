@@ -276,17 +276,20 @@ export default function WheelPage() {
   const { data: walletClient } = useWalletClient(); 
 
   // 👇 NOUVEAU : Lecture directe de la blockchain pour obtenir le VRAI score
+// Fichier : app/wheel/page.tsx (vers la ligne 279)
+
   const { data: scoreData, refetch: refetchScore } = useReadContract({
     address: BRAIN_CONTRACT,
-    abi: BrainScoreSigned.abi, // On utilise l'ABI importée
+    abi: BrainScoreSigned.abi, 
     functionName: "getPlayer", 
     args: [address],
-    enabled: !!address, // N'active la requête que si l'utilisateur est connecté
+    // 🛑 'enabled' EST RETIRÉ D'ICI
+
     query: {
-        staleTime: 0, // Force la vérification pour éviter les caches
+        staleTime: 0, // Force la vérification
+        enabled: !!address, // ✅ CORRECTION : 'enabled' est maintenant dans 'query'
     }
   });
-
   // 👇 Extraction du score réel et assignation des anciennes variables
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
   const brain = currentOnChainScore; 
