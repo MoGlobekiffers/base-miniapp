@@ -1,5 +1,3 @@
-// Fichier : app/wheel/wheel.tsx (Composant Client Final, SANS metadata)
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -26,7 +24,7 @@ import Leaderboard from "../components/Leaderboard";
 import BadgesPanel from "../components/BadgesPanel"; 
 
 /* =======================
- * Quests & appearance (Reste identique)
+ * Quests & appearance
  * ======================= */
 
 const QUESTS: string[] = [
@@ -80,7 +78,7 @@ const DEV_MODE =
   process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 /* =======================
- * Brain points (Reste identique)
+ * Brain points
  * ======================= */
 
 const QUEST_POINTS: Record<string, number> = {
@@ -106,7 +104,7 @@ const QUEST_POINTS: Record<string, number> = {
 };
 
 /* =======================
- * Quest descriptions (Reste identique)
+ * Quest descriptions
  * ======================= */
 
 const QUEST_DESCRIPTIONS: Record<string, string> = {
@@ -151,7 +149,7 @@ const QUEST_DESCRIPTIONS: Record<string, string> = {
 };
 
 /* =======================
- * Geometry helpers (Reste identique)
+ * Geometry helpers
  * ======================= */
 
 function deg2rad(d: number) {
@@ -185,7 +183,7 @@ function wedgePath(
 }
 
 /* =======================
- * Onchain helpers (Reste identique)
+ * Onchain helpers
  * ======================= */
 
 async function getPlayerNonce(player: string) {
@@ -270,7 +268,7 @@ async function sendClaim(
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 
-export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
+export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
 
   useEffect(() => {
@@ -488,7 +486,7 @@ export default function WheelClientPage() { // 🛑 RENOMMÉ EN WheelClientPage
     currentPoints !== 0 &&              
     (!isQuiz || quizResult === "correct");
 
-return (
+  return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 md:pt-8 px-4 overflow-x-hidden">
       
       {/* TITRE */}
@@ -630,7 +628,6 @@ return (
                   key={`label-${i}`}
                   transform={`rotate(${mid}) translate(0, -${radiusText}) rotate(90)`}
                 >
-                  {/* 👇 TEXTE EN VIOLET FONCÉ POUR LA LISIBILITÉ */}
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -650,7 +647,7 @@ return (
           </g>
         </svg>
 
-{/* BOUTON SPIN CENTRAL AVEC LOGO */}
+        {/* BOUTON SPIN CENTRAL AVEC LOGO */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={handleSpin}
@@ -662,7 +659,7 @@ return (
           >
             {/* IMAGE DE FOND (LOGO) */}
             <img
-              src="/base-logo.png"  // ⚠️ METTEZ LE NOM EXACT DE VOTRE FICHIER ICI
+              src="/base-logo-in-blue.png"  
               alt="Spin"
               className="absolute inset-0 w-full h-full object-cover"
             />
@@ -673,6 +670,8 @@ return (
             </span>
           </button>
         </div>
+      </div>
+
       {/* --- BADGES --- */}
       <div className="w-full max-w-4xl mt-6 border-t border-slate-800/50 pt-6 pb-20">
         <h2 className="text-lg font-bold mb-4 text-center text-slate-400 uppercase tracking-widest text-[10px]">
