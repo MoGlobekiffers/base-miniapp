@@ -13,6 +13,19 @@
     "buttonTitle": "Spin ⚡",
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
     "splashBackgroundColor": "#0f172a",
-    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
+    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler",
+    
+    "primaryCategory": "social",
+    "tags": [
+      "game",
+      "daily",
+      "rewards"
+    ],
+    "description": "Spin the DailyWheel every day to earn Brain Points and collect unique on-chain badges on Base.",
+    "subtitle": "Daily Rewards & Quests",
+    "heroImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "screenshotUrls": [
+      "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png"
+    ]
   }
 }
