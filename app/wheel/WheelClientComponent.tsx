@@ -261,33 +261,28 @@ async function sendClaim(
 }
 
 /* =======================
- * Page component (MODIFIÉ)
+ * Page component
  * ======================= */
 
-// Votre adresse de contrat Score
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
-
 
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      // Signale à Farcaster que le Frame est prêt
       await sdk.actions.ready(); 
     };
-    
-    // On le lance uniquement si pas déjà chargé
     if (sdk && !isSDKLoaded) {
       setIsSDKLoaded(true);
       load();
     }
   }, [isSDKLoaded]);
+
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient(); 
 
-  // 👇 NOUVEAU : Lecture directe de la blockchain pour obtenir le VRAI score
   const { data: scoreData, refetch: refetchScore } = useReadContract({
     address: BRAIN_CONTRACT,
     abi: BrainScoreSigned.abi, 
@@ -299,12 +294,9 @@ export default function WheelClientPage() {
     }
   });
 
-  // 👇 Extraction du score réel et assignation des anciennes variables
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
   const brain = currentOnChainScore; 
   const hasDouble = false; 
-  const refresh = refetchScore; 
-  
   
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -319,7 +311,6 @@ export default function WheelClientPage() {
   );
 
   const [claimed, setClaimed] = useState(false);
-  
   
   useEffect(() => {
     setMounted(true);
@@ -345,7 +336,7 @@ export default function WheelClientPage() {
     [anglePerSegment]
   );
 
-  /* Cooldown (ignored in DEV) */
+  /* Cooldown */
   useEffect(() => {
     if (!address) {
       setCooldown(0);
@@ -412,12 +403,6 @@ export default function WheelClientPage() {
         setActiveQuiz(null);
       }
 
-      // La logique de double points utilise addBrain, que nous conservons.
-      if (address && questLabel === "Double points") {
-        // La logique ici doit être mise à jour pour utiliser la nouvelle fonction de rafraîchissement
-        // setDoubleNext(address); 
-      }
-
       if (address && !DEV_MODE) {
         const key = `dw:lastSpin:${address.toLowerCase()}`;
         if (questLabel !== "Bonus spin") {
@@ -479,11 +464,9 @@ export default function WheelClientPage() {
     "Mini app quiz"
   ].includes(result || "");
 
-  const currentPoints = result ? (QUEST_POINTS[result] ?? 0) : 0;
-
   const showClaimPanel =
     result &&                           
-    currentPoints !== 0 &&              
+    (QUEST_POINTS[result] ?? 0) !== 0 &&              
     (!isQuiz || quizResult === "correct");
 
   return (
@@ -567,10 +550,10 @@ export default function WheelClientPage() {
       {/* LA ROUE */}
       <div className="relative w-full max-w-[340px] aspect-square md:max-w-[600px]">
         
-        {/* POINTEUR NÉON */}
+        {/* POINTEUR NÉON (REMONTÉ) */}
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: 30 }} 
+          style={{ top: 5 }} 
         >
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -628,6 +611,7 @@ export default function WheelClientPage() {
                   key={`label-${i}`}
                   transform={`rotate(${mid}) translate(0, -${radiusText}) rotate(90)`}
                 >
+                  {/* TEXTE EN VIOLET FONCÉ */}
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -647,7 +631,7 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* BOUTON SPIN CENTRAL AVEC LOGO */}
+        {/* BOUTON SPIN CENTRAL AVEC LOGO ET CHEMIN CORRIGÉ */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={handleSpin}
@@ -657,14 +641,11 @@ export default function WheelClientPage() {
               transition-transform active:scale-95
               ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
           >
-            {/* IMAGE DE FOND (LOGO) */}
             <img
-              src="/base-logo-in-blue.png"  
+              src="/base-logo-in-blue.png" 
               alt="Spin"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            
-            {/* TEXTE SPIN PAR DESSUS (Optionnel, retirez si le logo suffit) */}
             <span className="relative z-10 text-xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
               Spin
             </span>
