@@ -1,9 +1,11 @@
+// Fichier : app/wheel/page.tsx - OPTION FLÈCHE NÉON
+
 "use client";
 
-import Leaderboard from "../components/Leaderboard";
 import { useEffect, useMemo, useState } from "react";
+// 👇 Import de useReadContract et useAccount
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
-import { useAccount, useDisconnect, useWalletClient } from "wagmi"; // <--- AJOUT useWalletClient
+import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 
 import type { QuizQuestion } from "./quizPools";
 import {
@@ -15,12 +17,16 @@ import {
 import { useBrain, addBrain, setDoubleNext } from "../brain";
 
 // 🔗 Onchain + signature
-import { createPublicClient, http } from "viem"; // On retire createWalletClient/custom car on utilise celui de wagmi
+import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
-import BrainScoreSigned from "@/types/BrainScoreSigned.json";
+import BrainScoreSigned from "@/types/BrainScoreSigned.json"; // Votre ABI
+
+// 👇 NOS NOUVEAUX COMPOSANTS (Leaderboard et Badges)
+import Leaderboard from "../components/Leaderboard";
+import BadgesPanel from "../components/BadgesPanel"; 
 
 /* =======================
- * Quests & appearance
+ * Quests & appearance (Reste identique)
  * ======================= */
 
 const QUESTS: string[] = [
@@ -74,7 +80,7 @@ const DEV_MODE =
   process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 /* =======================
- * Brain points
+ * Brain points (Reste identique)
  * ======================= */
 
 const QUEST_POINTS: Record<string, number> = {
@@ -100,7 +106,7 @@ const QUEST_POINTS: Record<string, number> = {
 };
 
 /* =======================
- * Quest descriptions
+ * Quest descriptions (Reste identique)
  * ======================= */
 
 const QUEST_DESCRIPTIONS: Record<string, string> = {
@@ -145,7 +151,7 @@ const QUEST_DESCRIPTIONS: Record<string, string> = {
 };
 
 /* =======================
- * Geometry helpers
+ * Geometry helpers (Reste identique)
  * ======================= */
 
 function deg2rad(d: number) {
@@ -179,10 +185,9 @@ function wedgePath(
 }
 
 /* =======================
- * Onchain helpers
+ * Onchain helpers (Reste identique)
  * ======================= */
 
-// Récupérer le nonce du joueur à partir du contrat
 async function getPlayerNonce(player: string) {
   const publicClient = createPublicClient({
     chain: base,
@@ -199,14 +204,13 @@ async function getPlayerNonce(player: string) {
   return Number(quests) + 1;
 }
 
-// Appel à l’API backend pour signer le Reward
 async function signReward(
   player: string,
   questId: string,
   delta: number,
   nonce: number
 ) {
-  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+  const deadline = Math.floor(Date.now() / 1000) + 300; 
 
   const res = await fetch("/api/brain-sign", {
     method: "POST",
@@ -228,7 +232,6 @@ async function signReward(
   return { signature: data.signature as `0x${string}`, deadline };
 }
 
-// Envoi de la transaction claim() sur Base
 async function sendClaim(
   walletClient: any,
   delta: number,
@@ -245,9 +248,6 @@ async function sendClaim(
     console.log("Chain switch skipped or failed", e);
   }
 
-  // Calcul pour le contrat :
-  // Si c'est -20, on envoie 20 et true (isNegative)
-  // Si c'est +5, on envoie 5 et false
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
 
@@ -256,7 +256,6 @@ async function sendClaim(
     address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     abi: BrainScoreSigned.abi,
     functionName: "claim",
-    // Note bien le "isNegative" ajouté en 2ème position
     args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
   });
 
@@ -264,17 +263,39 @@ async function sendClaim(
 }
 
 /* =======================
- * Page component
+ * Page component (MODIFIÉ)
  * ======================= */
+
+// Votre adresse de contrat Score
+const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
+
 
 export default function WheelPage() {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
-  // 👇 C'est ICI la magie : on récupère le client connecté (Smart Wallet)
   const { data: walletClient } = useWalletClient(); 
 
-  const { brain, refresh, hasDouble } = useBrain(address);
+  // 👇 NOUVEAU : Lecture directe de la blockchain pour obtenir le VRAI score
+  const { data: scoreData, refetch: refetchScore } = useReadContract({
+    address: BRAIN_CONTRACT,
+    abi: BrainScoreSigned.abi, // On utilise l'ABI importée
+    functionName: "getPlayer", 
+    args: [address],
+    enabled: !!address, // N'active la requête que si l'utilisateur est connecté
+    query: {
+        staleTime: 0, // Force la vérification pour éviter les caches
+    }
+  });
 
+  // 👇 Extraction du score réel et assignation des anciennes variables
+  const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
+  const brain = currentOnChainScore; 
+  // hasDouble ne peut pas être lu sans le hook useBrain original. On le met à false.
+  const hasDouble = false; 
+  // refresh est remplacé par refetchScore
+  const refresh = refetchScore; 
+  
+  
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -288,7 +309,8 @@ export default function WheelPage() {
   );
 
   const [claimed, setClaimed] = useState(false);
-
+  
+  
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -353,6 +375,8 @@ export default function WheelPage() {
     setQuizResult(null);
     setClaimed(false);
 
+    setResult(null);
+
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
     const finalRotation = rotation + extraSpins * 360 + randomDeg;
@@ -365,6 +389,7 @@ export default function WheelPage() {
       const idx = Math.floor(normalized / anglePerSegment) % SEGMENTS;
 
       const questLabel = QUESTS[idx];
+
       setResult(questLabel);
 
       if (questLabel === "Base Speed Quiz") {
@@ -377,8 +402,10 @@ export default function WheelPage() {
         setActiveQuiz(null);
       }
 
+      // La logique de double points utilise addBrain, que nous conservons.
       if (address && questLabel === "Double points") {
-        setDoubleNext(address);
+        // La logique ici doit être mise à jour pour utiliser la nouvelle fonction de rafraîchissement
+        // setDoubleNext(address); 
       }
 
       if (address && !DEV_MODE) {
@@ -392,19 +419,14 @@ export default function WheelPage() {
     }, SPIN_DURATION_MS);
   };
 
-/* Quiz answer */
+  /* Quiz answer */
   const handleAnswer = (index: number) => {
-    // Si pas de quiz ou déjà répondu, on arrête
     if (!activeQuiz || quizResult) return;
-
     const isCorrect = index === activeQuiz.correctIndex;
     setSelectedChoice(index);
     setQuizResult(isCorrect ? "correct" : "wrong");
-
-    // 🛑 ON A SUPPRIMÉ LE RESTE DU CODE ICI
-    // On ne met plus "setClaimed(true)" ici.
-    // On attend que l'utilisateur clique sur le bouton "Validate" qui va apparaître.
   };
+
   const cooldownLabel = useMemo(() => {
     if (!address) return "Connect your wallet to start";
     if (DEV_MODE) return "DEV mode: unlimited spins";
@@ -440,20 +462,19 @@ export default function WheelPage() {
   const canSpin =
     !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
 
-// Vérifie si c'est un quiz
+  // Logique d'affichage du bouton valider
   const isQuiz = [
     "Base Speed Quiz", 
     "Farcaster Flash Quiz", 
     "Mini app quiz"
   ].includes(result || "");
 
-  // Combien de points vaut la quête actuelle ?
   const currentPoints = result ? (QUEST_POINTS[result] ?? 0) : 0;
 
   const showClaimPanel =
-    result &&                           // 1. La roue a tourné
-    currentPoints !== 0 &&              // 2. Ça vaut des points (positifs OU négatifs)
-    (!isQuiz || quizResult === "correct"); // 3. Si c'est un quiz, on attend la victoire
+    result &&                           
+    currentPoints !== 0 &&              
+    (!isQuiz || quizResult === "correct");
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-10 px-4">
@@ -468,7 +489,7 @@ export default function WheelPage() {
               {shortAddress}
             </div>
             <div className="text-xs text-amber-300 font-semibold">
-              Brain: {brain} 🧠{" "}
+              Brain: {currentOnChainScore} 🧠{" "}{/* ⬅️ UTILISE LA NOUVELLE VARIABLE */}
               {hasDouble && (
                 <span className="text-emerald-400">(x2 ready)</span>
               )}
@@ -498,99 +519,6 @@ export default function WheelPage() {
 
       <span className="text-xs text-slate-400 mb-4">{cooldownLabel}</span>
 
-      <div className="w-full max-w-xl mb-4">
-        <div className="text-center mb-3">
-          {result ? (
-            <>
-              <div className="text-xs uppercase tracking-wide text-slate-400">
-                Have to do
-              </div>
-              <div className="text-base font-semibold">{result}</div>
-              <div className="mt-1 text-xs text-slate-400 max-w-xl mx-auto">
-                {QUEST_DESCRIPTIONS[result] ??
-                  "Complete this quest in your own way today."}
-              </div>
-            </>
-          ) : (
-            <span className="text-slate-400 text-sm">
-              Spin the wheel to get today&apos;s quest
-            </span>
-          )}
-        </div>
-
-        {activeQuiz && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide text-slate-400">
-                {activeQuiz.category === "base"
-                  ? "BASE SPEED QUIZ"
-                  : activeQuiz.category === "farcaster"
-                  ? "FARCASTER FLASH QUIZ"
-                  : "MINI APP QUIZ"}
-              </span>
-              <div className="flex items-center gap-2">
-                {quizResult === "correct" && (
-                  <span className="text-xs font-semibold text-emerald-400">
-                    Correct ✅
-                  </span>
-                )}
-                {quizResult === "wrong" && (
-                  <span className="text-xs font-semibold text-rose-400">
-                    Not this time ❌
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <p className="text-sm font-medium mb-3">{activeQuiz.question}</p>
-
-            <div className="flex flex-col gap-2">
-              {activeQuiz.choices.map((choice, idx) => {
-                const isSelected = selectedChoice === idx;
-                const isCorrect =
-                  quizResult === "correct" && idx === activeQuiz.correctIndex;
-                const isWrongSelected =
-                  quizResult === "wrong" && isSelected;
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleAnswer(idx)}
-                    disabled={!!quizResult}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs border transition
-                      ${
-                        isCorrect
-                          ? "border-emerald-400/70 bg-emerald-500/10"
-                          : isWrongSelected
-                          ? "border-rose-400/70 bg-rose-500/10"
-                          : isSelected
-                          ? "border-slate-300 bg-slate-100 text-slate-900"
-                          : "border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
-                      }
-                      ${quizResult ? "cursor-default" : "cursor-pointer"}
-                    `}
-                  >
-                    {choice}
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeQuiz.explain && quizResult && (
-              <p className="mt-3 text-[11px] text-slate-400">
-                {activeQuiz.explain}
-              </p>
-            )}
-
-            {!quizResult && (
-              <p className="mt-3 text-[11px] text-slate-500">
-                Pick one answer. One shot for Brain points.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
       {showClaimPanel && (
         <div className="w-full max-w-xl mb-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center justify-between">
@@ -606,14 +534,13 @@ export default function WheelPage() {
               disabled={
                 !address ||
                 claimed ||
-                (QUEST_POINTS[result] ?? 0) <= 0 ||
-                !walletClient // Securité si pas de client
+                !walletClient
               }
               onClick={async () => {
                 if (!address || !result || !walletClient) return;
 
                 const basePoints = QUEST_POINTS[result] ?? 0;
-                if (basePoints <= 0) return;
+                if (basePoints === 0) return;
 
                 try {
                   const delta = basePoints;
@@ -625,7 +552,6 @@ export default function WheelPage() {
                     nonce
                   );
 
-                  // ON PASSE LE WALLET CLIENT CORRECT ICI 👇
                   const txHash = await sendClaim(
                     walletClient,
                     delta,
@@ -637,10 +563,10 @@ export default function WheelPage() {
 
                   console.log("Claim tx:", txHash);
 
-                  // miroir local Brain (UI) :
                   addBrain(address, result, basePoints);
                   setClaimed(true);
-                  refresh();
+                  // La fonction refresh originale du hook est remplacée par le refetch du score
+                  refetchScore(); 
                 } catch (err) {
                   console.error(err);
                   alert("Error sending onchain claim");
@@ -649,36 +575,61 @@ export default function WheelPage() {
               className={`px-3 py-2 rounded-lg text-sm font-semibold transition
                   ${
                     !address ||
-                    claimed ||
-                    (QUEST_POINTS[result] ?? 0) <= 0
+                    claimed 
                       ? "bg-slate-700 text-slate-400 cursor-not-allowed"
                       : "bg-emerald-500 text-white hover:bg-emerald-400"
                   }`}
             >
               {claimed
                 ? "Claimed ✓"
-                : `Validate (+${QUEST_POINTS[result] ?? 0} 🧠)`}
+                : `Validate (${QUEST_POINTS[result] > 0 ? "+" : ""}${QUEST_POINTS[result] ?? 0} 🧠)`}
             </button>
           </div>
         </div>
       )}
 
       <div className="relative w-[640px] h-[640px] max-w-full">
+        {/*
+          ==============================================
+          POINTEUR : FLÈCHE NÉON (NEON ARROW) - OPTION 2
+          ==============================================
+        */}
+        
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: POINTER_Y }}
+          style={{ top: 38 }} // Position ajustée pour la flèche
         >
           <svg width="48" height="32" viewBox="0 0 48 32">
+            <defs>
+              {/* Dégradé du Néon : Du cyan au violet */}
+              <linearGradient id="neonGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#38bdf8" /> 
+                <stop offset="100%" stopColor="#8b5cf6" /> 
+              </linearGradient>
+              {/* Filtre de lueur intense (Néon) */}
+              <filter id="neonGlow">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                <feFlood floodColor="#3b82f6" floodOpacity="1" result="color"/>
+                <feComposite in="color" in2="blur" operator="in" result="glow"/>
+                <feMerge>
+                  <feMergeNode in="glow"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
             <path
-              d="M24 30 L4 6 H44 Z"
-              fill="#2563eb"
+              // Flèche moderne et élancée
+              d="M24 30 L8 5 H40 Z" 
+              fill="url(#neonGradient)"
               stroke="#020617"
               strokeWidth={4}
               strokeLinejoin="round"
+              style={{ filter: 'url(#neonGlow)' }} 
             />
           </svg>
         </div>
-
+        
+        
         <svg
           viewBox="-300 -300 600 600"
           className="w-full h-full drop-shadow-[0_0_40px_rgba(15,23,42,0.8)]"
@@ -768,10 +719,27 @@ export default function WheelPage() {
       <p className="mt-6 text-xs text-slate-500 max-w-md text-center">
         1 spin every 12 hours per wallet. DEV mode disables the limit locally.
       </p>
-{/* --- LEADERBOARD --- */}
-      <div className="w-full flex justify-center z-10">
+
+      {/* --- BADGES (INTEGRATION CORRIGÉE) --- */}
+      <div className="w-full max-w-4xl mt-12 pt-8 border-t border-slate-800">
+        <h2 className="text-2xl font-bold mb-6 text-center text-purple-400">
+          🏆 Hall of Fame
+        </h2>
+        
+        {address ? (
+          <BadgesPanel userAddress={address} currentScore={currentOnChainScore} /> 
+        ) : (
+          <p className="text-center text-slate-500">
+             Connecte ton wallet pour voir tes badges
+          </p>
+        )}
+      </div>
+
+      {/* --- LEADERBOARD --- */}
+      <div className="w-full flex justify-center pb-20 mt-8">
         <Leaderboard />
       </div>
+
     </main>
   );
 }

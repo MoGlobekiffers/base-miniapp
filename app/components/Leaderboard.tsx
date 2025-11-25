@@ -1,119 +1,113 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPublicClient, http, parseAbiItem } from "viem";
+// Pas besoin de toHex ici si on passe le BigInt directement
+import { createPublicClient, http, parseAbiItem } from "viem"; 
 import { base } from "viem/chains";
 
-// Type pour un joueur
-type Leader = {
-  address: string;
+// Changement de RPC de secours pour ANKR (souvent plus fiable que Llama/Subquery)
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.ankr.com/base";
+
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(RPC_URL),
+});
+
+const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
+
+// Limite de la plage de blocs pour respecter le serveur (50 000 blocs = env. 12h)
+const SAFE_SCAN_LIMIT = 50000n; 
+
+
+type LeaderboardItem = {
+  user: string;
   score: number;
 };
 
 export default function Leaderboard() {
-  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [leaders, setLeaders] = useState<LeaderboardItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
+    async function fetchLeaderboard() {
       try {
-        const publicClient = createPublicClient({
-          chain: base,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
-        });
-
-        // 1. Récupérer tous les événements "ScoreUpdated" depuis le début
-        // On récupère l'historique pour savoir qui a combien de points
+        if (!BRAIN_CONTRACT) {
+          console.warn("Adresse du contrat BrainScore manquante.");
+          setLoading(false);
+          return;
+        }
+        
+        // 1. Déterminer la plage de blocs sécurisée
+        const latestBlock = await publicClient.getBlockNumber();
+        const fromBlock = latestBlock > SAFE_SCAN_LIMIT ? latestBlock - SAFE_SCAN_LIMIT : 0n;
+        
+        // 2. Appel protégé : la promesse doit résoudre à un tableau []
+        // Si l'RPC est bon, logs est un tableau. Si l'RPC est mauvais, une erreur est lancée.
         const logs = await publicClient.getLogs({
-          address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
-          event: parseAbiItem(
-            "event ScoreUpdated(address indexed user, uint256 newTotal)"
-          ),
-          fromBlock: BigInt(38609587),
+          address: BRAIN_CONTRACT,
+          event: parseAbiItem("event ScoreUpdated(address indexed user, uint256 newTotal)"),
+          fromBlock: fromBlock, 
         });
 
-        // 2. Traiter les données : on veut le DERNIER score connu par joueur
-        const scoresMap = new Map<string, number>();
+        const scoresMap: Record<string, number> = {};
 
+        // 3. Traitement
         logs.forEach((log) => {
           const user = log.args.user;
-          const newTotal = Number(log.args.newTotal);
-          
-          if (user) {
-            // Comme les logs sont chronologiques, le dernier événement écrase les précédents
-            scoresMap.set(user, newTotal);
+          const score = log.args.newTotal;
+          if (user && score !== undefined) {
+            scoresMap[user] = Number(score);
           }
         });
 
-        // 3. Convertir en tableau et trier (Le plus gros score en premier)
-        const sortedLeaders = Array.from(scoresMap.entries())
-          .map(([address, score]) => ({ address, score }))
-          .sort((a, b) => b.score - a.score) // Tri décroissant
-          .slice(0, 10); // On garde le TOP 10
+        const sorted = Object.entries(scoresMap)
+          .map(([user, score]) => ({ user, score }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
 
-        setLeaders(sortedLeaders);
-      } catch (error) {
-        console.error("Error fetching leaderboard:", error);
+        setLeaders(sorted);
+      } catch (err) {
+        // En cas d'erreur de réseau/type (le cas actuel), on log et on affiche le message d'erreur.
+        console.error("Erreur RPC Leaderboard (Type/Réseau):", err);
+        setError(true);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchLeaderboard();
   }, []);
 
-  // Fonction pour raccourcir l'adresse (0x12...34)
-  const shorten = (addr: string) => 
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  // Affichage "Safe" en cas d'erreur ou chargement
+  if (loading) return <div className="text-center text-xs text-gray-500 animate-pulse">Chargement du Top 10...</div>;
+  
+  if (error) return (
+    <div className="text-center text-xs text-red-400 border border-red-900/30 p-2 rounded bg-red-900/10">
+      Classement indisponible (Problème de connexion RPC). <br/> Veuillez redémarrer le serveur et vérifier votre `.env.local`.
+    </div>
+  );
+
+  if (leaders.length === 0) return <div className="text-center text-xs text-gray-500">Aucun score enregistré.</div>;
 
   return (
-    <div className="w-full max-w-md bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mt-8 mb-12">
-      <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        🏆 Top Brains (Onchain)
-      </h2>
-
-      {loading ? (
-        <div className="space-y-3 animate-pulse">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 bg-slate-800 rounded-lg w-full" />
-          ))}
-        </div>
-      ) : leaders.length === 0 ? (
-        <p className="text-slate-500 text-sm">No players yet. Be the first!</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {leaders.map((leader, index) => (
-            <div
-              key={leader.address}
-              className={`flex items-center justify-between p-3 rounded-xl border 
-                ${index === 0 ? "bg-amber-500/10 border-amber-500/30" : 
-                  index === 1 ? "bg-slate-700/30 border-slate-600/30" :
-                  index === 2 ? "bg-orange-700/20 border-orange-700/30" :
-                  "bg-slate-800/30 border-transparent hover:border-slate-700"}
-              `}
-            >
-              <div className="flex items-center gap-3">
-                <span className={`
-                  font-bold w-6 text-center
-                  ${index === 0 ? "text-amber-400 text-lg" : 
-                    index === 1 ? "text-slate-300" : 
-                    index === 2 ? "text-orange-400" : "text-slate-500"}
-                `}>
-                  {index + 1}
-                </span>
-                <div className="flex flex-col">
-                  <span className="text-slate-200 text-sm font-mono">
-                    {shorten(leader.address)}
-                  </span>
-                </div>
-              </div>
-              <div className="font-bold text-emerald-400">
-                {leader.score} <span className="text-xs text-slate-500">🧠</span>
-              </div>
+    <div className="w-full max-w-md bg-slate-900/50 p-4 rounded-xl border border-slate-800 mt-8">
+      <h3 className="text-center font-bold text-purple-400 mb-4">🏆 Top Brains (Onchain)</h3>
+      <div className="space-y-2">
+        {leaders.map((item, index) => (
+          <div key={item.user} className="flex justify-between items-center text-sm p-2 bg-slate-800/50 rounded hover:bg-slate-800 transition">
+            <div className="flex items-center gap-3">
+              <span className={`font-mono font-bold w-6 text-center ${index === 0 ? "text-yellow-400 text-lg" : index === 1 ? "text-gray-300" : index === 2 ? "text-orange-400" : "text-slate-500"}`}>
+                #{index + 1}
+              </span>
+              <span className="font-mono text-slate-300">
+                {item.user.slice(0, 6)}...{item.user.slice(-4)}
+              </span>
             </div>
-          ))}
-        </div>
-      )}
+            <span className="font-bold text-emerald-400">{item.score} 🧠</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
