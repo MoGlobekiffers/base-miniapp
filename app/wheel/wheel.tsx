@@ -1,9 +1,8 @@
-// Fichier : app/wheel/page.tsx - OPTION FLÈCHE NÉON
+// Fichier : app/wheel/wheel.tsx (Composant Client Final)
 
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-// 👇 Import de useReadContract et useAccount
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 
@@ -270,7 +269,7 @@ async function sendClaim(
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 
-export default function WheelPage() {
+export default function WheelClientPage() { // 🛑 RENOMMÉ POUR ÊTRE IMPORTÉ DANS PAGE.TSX
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient(); 
@@ -283,11 +282,10 @@ export default function WheelPage() {
     abi: BrainScoreSigned.abi, 
     functionName: "getPlayer", 
     args: [address],
-    // 🛑 'enabled' EST RETIRÉ D'ICI
 
     query: {
         staleTime: 0, // Force la vérification
-        enabled: !!address, // ✅ CORRECTION : 'enabled' est maintenant dans 'query'
+        enabled: !!address, // ✅ 'enabled' est maintenant dans 'query'
     }
   });
   // 👇 Extraction du score réel et assignation des anciennes variables

@@ -18,6 +18,7 @@ export const metadata = {
   'fc:frame:image': 'https://base-miniapp-gamma.vercel.app/images/wheel-preview.png', 
   'fc:frame:post_url': 'https://base-miniapp-gamma.vercel.app/api/frame-handler', 
   'fc:frame:button:1': 'Faire Tourner la Roue ⚡',
+  'fc:frame:button:1:action': 'post', // AJOUTÉ : Action standard lors du clic
 };
 
 // Ceci est le composant par défaut qui rend le composant client
