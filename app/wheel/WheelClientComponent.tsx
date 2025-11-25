@@ -650,29 +650,29 @@ return (
           </g>
         </svg>
 
-        {/* 👇 RETOUR DU BOUTON LOGO BASE FUN */}
+{/* BOUTON SPIN CENTRAL AVEC LOGO */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={handleSpin}
             disabled={!canSpin}
-            className={`pointer-events-auto rounded-full focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-transform active:scale-90
+            className={`pointer-events-auto w-24 h-24 rounded-full flex items-center justify-center
+              border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.6)] overflow-hidden relative
+              transition-transform active:scale-95
               ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
           >
-            <div className="relative w-16 h-16 md:w-24 md:h-24">
-              {/* Assurez-vous que l'image est bien dans public/ */}
-              <img
-                src="/base-logo-in-blue.png" 
-                alt="Spin on Base"
-                className="w-full h-full rounded-full shadow-2xl border-4 border-white/10"
-              />
-              <span className="absolute inset-0 flex items-center justify-center text-lg md:text-2xl font-black text-white drop-shadow-md uppercase tracking-wider">
-                Spin
-              </span>
-            </div>
+            {/* IMAGE DE FOND (LOGO) */}
+            <img
+              src="/base-logo.png"  // ⚠️ METTEZ LE NOM EXACT DE VOTRE FICHIER ICI
+              alt="Spin"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            
+            {/* TEXTE SPIN PAR DESSUS (Optionnel, retirez si le logo suffit) */}
+            <span className="relative z-10 text-xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
+              Spin
+            </span>
           </button>
         </div>
-      </div>
-
       {/* --- BADGES --- */}
       <div className="w-full max-w-4xl mt-6 border-t border-slate-800/50 pt-6 pb-20">
         <h2 className="text-lg font-bold mb-4 text-center text-slate-400 uppercase tracking-widest text-[10px]">
