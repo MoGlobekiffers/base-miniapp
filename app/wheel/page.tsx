@@ -1,14 +1,13 @@
+import { Metadata } from 'next'; // On importe le type pour être sûr
 import WheelClientComponent from './WheelClientComponent'; 
 
-export const metadata = {
-  // Titre court pour passer la validation (< 30 chars)
-  title: 'DailyWheel', 
+// On type explicitement l'objet metadata
+export const metadata: Metadata = {
+  title: 'DailyWheel',
   description: 'Spin daily to earn Brain Points and badges.',
   
   openGraph: {
-    // Titre court pour OG (< 30 chars)
     title: 'DailyWheel', 
-    // Description courte (< 100 chars)
     description: 'Spin daily to earn Brain Points and badges.', 
     url: 'https://base-miniapp-gamma.vercel.app/wheel',
     siteName: 'DailyWheel',
@@ -17,10 +16,8 @@ export const metadata = {
         url: 'https://base-miniapp-gamma.vercel.app/images/wheel-preview.png',
         width: 1200,
         height: 630,
-        alt: 'DailyWheel Preview',
       },
     ],
-    locale: 'en_US',
     type: 'website',
   },
 
