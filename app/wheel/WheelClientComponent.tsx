@@ -237,6 +237,11 @@ export default function WheelClientPage() {
   const shortAddress = address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address ?? "";
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
+const isQuiz = [
+    "Base Speed Quiz", 
+    "Farcaster Flash Quiz", 
+    "Mini app quiz"
+  ].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
   return (
