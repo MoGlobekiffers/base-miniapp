@@ -269,6 +269,28 @@ async function sendClaim(
 // Votre adresse de contrat Score
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
+export const metadata = {
+  title: 'DailyWheel - Gagnez des points sur Base',
+  description: 'Faites tourner la roue pour des quêtes quotidiennes et gagnez des Brain Points!',
+  
+  // Tags Open Graph standard
+  openGraph: {
+    title: 'DailyWheel - Gagnez des Brain Points',
+    images: ['https://base-miniapp-gamma.vercel.app/images/wheel-preview.png'], // ⬅️ Utilisez une image statique pour l'aperçu initial
+  },
+  
+  // Tags Farcaster Frame CRITIQUES
+  'fc:frame': 'vNext',
+  
+  // 1. L'image que le Frame Validator doit afficher
+  'fc:frame:image': 'https://base-miniapp-gamma.vercel.app/images/wheel-preview.png', 
+  
+  // 2. L'URL API qui gérera le clic sur le bouton (doit exister!)
+  'fc:frame:post_url': 'https://base-miniapp-gamma.vercel.app/api/frame-handler', 
+  
+  // 3. Le bouton que l'utilisateur verra
+  'fc:frame:button:1': 'Faire Tourner la Roue ⚡',
+};
 
 export default function WheelPage() {
   const { address } = useAccount();
