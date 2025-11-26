@@ -27,7 +27,6 @@ import BadgesPanel from "../components/BadgesPanel";
 /* =======================
  * Quests & appearance
  * ======================= */
-// Raccourci pour la lisibilité, ne pas modifier la liste réelle
 const QUESTS: string[] = [
   "Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party",
   "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app",
@@ -62,7 +61,6 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
-// Placeholder pour les descriptions (ne pas toucher à vos vraies descriptions)
 const QUEST_DESCRIPTIONS: Record<string, string> = {
   "Base Speed Quiz": "Open the Base Speed Quiz card below and answer...",
 };
@@ -238,12 +236,10 @@ export default function WheelClientPage() {
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
   
-  // Définition de isQuiz pour le panneau de réclamation
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
   return (
-    // Container principal avec padding minimal et centrage
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden">
       
       {/* HEADER ULTRA COMPACT */}
@@ -263,14 +259,12 @@ export default function WheelClientPage() {
         </div>
       </div>
 
-      {/* INFO BAR COMPACTE */}
       <div className="flex justify-center items-center gap-2 my-1 h-4 scale-90 font-mono tracking-widest text-[9px] text-slate-500">
          {DEV_MODE && address && <button onClick={resetDaily} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}
          <span>{cooldownLabel}</span>
       </div>
 
       {showClaimPanel && (
-        /* PANEL RECLAMATION */
         <div className="w-full max-w-xs mb-1 z-50 animate-in fade-in slide-in-from-bottom-4 scale-90 origin-bottom">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-2 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             <div className="text-xs font-bold text-emerald-400">Quest Complete!</div>
@@ -299,10 +293,10 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* 👇 2. ROUE AGRANDIE (max-w passa à 360px) */}
-      <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mt-1 mb-0">
+      {/* 👇 2. ROUE MAXIMISÉE POUR MOBILE (max-w: 380px) */}
+      <div className="relative w-full max-w-[380px] aspect-square md:max-w-[500px] mt-1 mb-0">
         
-        {/* POINTEUR (Ajusté) */}
+        {/* POINTEUR */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -5 }}>
           <svg width="40" height="30" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -333,20 +327,21 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* 👇 1. BOUTON SPIN CORRIGÉ : Texte plus gros, z-index, drop-shadow */}
+        {/* 👇 1. BOUTON SPIN CORRIGÉ : TEXTE ENORME ET LISIBLE */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-24 h-24 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.8)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale" : "cursor-pointer hover:scale-105"}`}>
             <img src={BaseLogo.src} alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
-            {/* TEXTE SPIN : Agrandit (text-2xl), gras, et grosse ombre portée pour le détacher du fond */}
-            <span className="relative z-20 text-2xl font-black text-white drop-shadow-[0_3px_3px_rgba(0,0,0,1)] uppercase tracking-widest">Spin</span>
+            {/* TEXTE SPIN : Taille XXL et contour noir simulé par drop-shadow */}
+            <span className="relative z-20 text-3xl font-black text-white drop-shadow-[0_2px_0_rgba(0,0,0,1)] uppercase tracking-widest" style={{ textShadow: "0 0 3px black, 0 0 5px black" }}>
+              SPIN
+            </span>
           </button>
         </div>
       </div>
 
-      {/* 👇 3. BADGES DRASTIQUEMENT RÉDUITS (Scale 60% et remontés) */}
-      <div className="w-full max-w-4xl border-t border-slate-800/50 pt-2 flex-1 relative">
-        {/* On applique une réduction d'échelle massive (60%) et on remonte le bloc avec une marge négative */}
-        <div className="scale-60 origin-top -mt-6"> 
+      {/* 👇 3. BADGES : TAILLE 50% ET REMONTÉS AU MAX (-mt-12) */}
+      <div className="w-full max-w-4xl border-t border-slate-800/50 pt-0 flex-1 relative">
+        <div className="scale-50 origin-top -mt-10"> 
           <h2 className="text-sm font-bold mb-2 text-center text-slate-500 uppercase tracking-widest">Your Trophy Room</h2>
           {address ? (
              <BadgesPanel userAddress={address} currentScore={currentOnChainScore} />
