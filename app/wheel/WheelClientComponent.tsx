@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 import sdk from '@farcaster/frame-sdk';
-// Import de l'image du logo
+// 👇 LIGNE 7 : Import direct de l'image. Le chemin est correct pour votre structure.
 import BaseLogo from '../../public/base-logo-in-blue.png'; 
 
 import type { QuizQuestion } from "./quizPools";
@@ -301,7 +301,7 @@ export default function WheelClientPage() {
         {/* 1. POINTEUR (FLÈCHE) EN HAUT */}
         <div
           className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-          style={{ top: -10 }} // Positionnée en haut de la roue
+          style={{ top: -10 }} 
         >
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -341,8 +341,10 @@ export default function WheelClientPage() {
         {/* 2. BOUTON SPIN CENTRAL AVEC LOGO BASE */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
-            {/* Image de fond (Logo Base) */}
+            
+            {/* 👇 LIGNE 354 : Utilisation de la variable importée BaseLogo */}
             <img src={BaseLogo.src} alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
+            
             {/* Texte SPIN */}
             <span className="relative z-10 text-2xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
               SPIN
