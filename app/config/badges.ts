@@ -96,7 +96,7 @@ export const BADGES: Badge[] = [
   {
     id: 21,
     name: "Weekend Warrior",
-    description: "Play on Saturday and Sunday consecutively for 10 weeks.",
+    description: "Play on Saturday and Sunday consecutively for 8 weeks.",
     image: "/badges/weekend_warrior.png",
     category: "Special",
     minScore: 0,
