@@ -340,8 +340,12 @@ export default function WheelClientPage() {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
             
-            {/* --- CORRECTION ICI : Utilisation du chemin absolu --- */}
-            <img src="/base-logo-in-blue.png" alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
+            {/* IMAGE DE FOND (URL EXTERNE OFFICIELLE) */}
+            <img
+              src="https://raw.githubusercontent.com/base-org/brand-kit/master/logo/in-product/Base_Symbol_Blue.svg" 
+              alt="Spin"
+              className="absolute inset-0 w-full h-full object-cover p-1" // J'ai ajouté un petit padding p-1 pour qu'il respire
+            />
             
             {/* Texte SPIN */}
             <span className="relative z-10 text-2xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
