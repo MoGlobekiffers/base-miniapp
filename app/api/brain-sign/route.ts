@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
-// 👇 IMPORT IMPORTANT
+// Import KV pour la base de données
 import { kv } from "@vercel/kv"; 
 
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
@@ -13,17 +11,27 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { player, questId, delta, nonce, deadline } = body;
+    const playerKey = player.toLowerCase();
 
     // --- 🧠 LOGIQUE DE MÉMOIRE (Redis/KV) ---
     try {
-      const playerKey = player.toLowerCase();
       const today = new Date();
       const dayOfWeek = today.getDay(); // 6 = Samedi, 0 = Dimanche
       
-      // 1. Compteur total de Spins (Pour le badge Gambler)
+      // 1. Compteur total de Spins (Pour badge 'Gambler')
       await kv.incr(`total_spins:${playerKey}`);
 
-      // 2. Logique Weekend Warrior
+      // 2. Logique 'Lucky Bastard' (Compter les Bonus Spins)
+      if (questId === "Bonus spin") {
+        await kv.incr(`bonus_spins:${playerKey}`);
+      }
+
+      // 3. Logique 'Phoenix' (Noter la faillite)
+      if (questId === "Bankruptcy") {
+        await kv.set(`has_bankrupted:${playerKey}`, "true");
+      }
+
+      // 4. Logique 'Weekend Warrior'
       if (dayOfWeek === 6) {
         // C'est Samedi : On note qu'il a joué. Expire dans 48h.
         await kv.set(`played_sat:${playerKey}`, "true", { ex: 48 * 3600 });
@@ -31,11 +39,9 @@ export async function POST(request: Request) {
       else if (dayOfWeek === 0) {
         // C'est Dimanche : A-t-il joué Samedi ?
         const playedSaturday = await kv.get(`played_sat:${playerKey}`);
-        
         if (playedSaturday) {
-          // OUI ! Week-end validé. On incrémente le score de week-ends.
+          // OUI ! On incrémente le score de week-ends.
           await kv.incr(`weekend_score:${playerKey}`);
-          // On supprime la note du samedi pour ne pas compter double
           await kv.del(`played_sat:${playerKey}`);
         }
       }
@@ -45,36 +51,14 @@ export async function POST(request: Request) {
     }
     // ------------------------------------------
 
-    // Signature Blockchain (Code standard)
+    // Signature Blockchain Standard
     const account = privateKeyToAccount(PRIVATE_KEY);
-    const domain = {
-      name: "BrainScore",
-      version: "1",
-      chainId: 8453, 
-      verifyingContract: BRAIN_CONTRACT,
-    };
-    
-    const types = {
-      Claim: [
-        { name: "user", type: "address" },
-        { name: "amount", type: "uint256" },
-        { name: "isNegative", type: "bool" },
-        { name: "nonce", type: "uint256" },
-        { name: "deadline", type: "uint256" },
-      ],
-    };
+    const domain = { name: "BrainScore", version: "1", chainId: 8453, verifyingContract: BRAIN_CONTRACT };
+    const types = { Claim: [{ name: "user", type: "address" }, { name: "amount", type: "uint256" }, { name: "isNegative", type: "bool" }, { name: "nonce", type: "uint256" }, { name: "deadline", type: "uint256" }] };
 
     const signature = await account.signTypedData({
-      domain,
-      types,
-      primaryType: "Claim",
-      message: {
-        user: player,
-        amount: BigInt(Math.abs(delta)),
-        isNegative: delta < 0,
-        nonce: BigInt(nonce),
-        deadline: BigInt(deadline),
-      },
+      domain, types, primaryType: "Claim",
+      message: { user: player, amount: BigInt(Math.abs(delta)), isNegative: delta < 0, nonce: BigInt(nonce), deadline: BigInt(deadline) },
     });
 
     return NextResponse.json({ signature });

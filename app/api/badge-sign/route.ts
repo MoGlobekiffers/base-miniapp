@@ -3,7 +3,6 @@ import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import BrainScoreABI from "@/types/BrainScoreSigned.json"; 
-// 👇 IMPORT IMPORTANT
 import { kv } from "@vercel/kv";
 
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
@@ -45,23 +44,28 @@ export async function POST(request: Request) {
       case 5: isEligible = currentScore >= 1000; break; 
 
       // --- Gameplay ---
-      case 10: isEligible = currentScore > 0; break; // First Blood
-      case 11: isEligible = currentScore > 0; break; // Phoenix
+      case 10: isEligible = currentScore > 0; break; // First Blood (Avoir joué au moins une fois)
+      
+      case 11: // 🐦 PHOENIX : Avoir fait faillite
+        const hasBankrupted = await kv.get(`has_bankrupted:${player}`);
+        isEligible = !!hasBankrupted; // Doit être vrai
+        break;
       
       case 12: // 🎲 GAMBLER : 50 Spins
         const spins = await kv.get(`total_spins:${player}`);
-        // Astuce : Mettre >= 1 pour tester, >= 50 pour la prod
         isEligible = Number(spins) >= 50; 
         break;
 
-      case 13: isEligible = currentScore > 0; break; // Lucky Bastard (Reste manuel pour l'instant)
+      case 13: // 🍀 LUCKY BASTARD : 10 Bonus Spins
+        const bonusSpins = await kv.get(`bonus_spins:${player}`);
+        isEligible = Number(bonusSpins) >= 10;
+        break;
 
       // --- Spéciaux ---
       case 20: isEligible = true; break; // Early Adopter
       
-      case 21: // ⚔️ WEEKEND WARRIOR : 5 Weekends
+      case 21: // ⚔️ WEEKEND WARRIOR : 8 Weekends
         const weekends = await kv.get(`weekend_score:${player}`);
-        // Astuce : Mettre >= 1 pour tester, >= 5 pour la prod
         isEligible = Number(weekends) >= 8; 
         break;
 
