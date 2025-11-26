@@ -337,7 +337,7 @@ export default function WheelClientPage() {
 
         {/* BOUTON SPIN CENTRAL AVEC IMAGE FIXE VIA CHEMIN PUBLIC DIRECT */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
+          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50  cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
             
             {/* 👇 CORRECTION : CHEMIN DIRECT VERS LE DOSSIER PUBLIC */}
             <img 
