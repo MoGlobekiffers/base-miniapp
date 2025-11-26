@@ -1,4 +1,4 @@
-"use client";
+k"use client";
 
 import { useEffect, useState } from "react";
 import { createPublicClient, http, parseAbiItem } from "viem";
@@ -14,7 +14,7 @@ const publicClient = createPublicClient({
 
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
-// On scanne les dernières heures pour voir les joueurs actifs
+// On scanne les 10 000 derniers blocs (environ 5h) pour la stabilité
 const SAFE_BLOCK_RANGE = 10000n; 
 
 type LeaderboardItem = {
@@ -25,9 +25,7 @@ type LeaderboardItem = {
 export default function Leaderboard() {
   const [leaders, setLeaders] = useState<LeaderboardItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  // 👇 Nouvel état pour gérer l'ouverture de la fenêtre
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // État pour ouvrir/fermer la modale
 
   useEffect(() => {
     let isMounted = true;
@@ -54,7 +52,7 @@ export default function Leaderboard() {
           }
         });
 
-        // On garde le TOP 20 en mémoire
+        // On garde le TOP 20
         const sorted = Object.entries(scoresMap)
           .map(([user, score]) => ({ user, score }))
           .sort((a, b) => b.score - a.score)
@@ -66,45 +64,39 @@ export default function Leaderboard() {
         }
       } catch (err) {
         console.error("Leaderboard error (Silent):", err);
-        if (isMounted) {
-            setError(true);
-            setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
     fetchLeaderboard();
-
     return () => { isMounted = false; };
   }, []);
 
-  if (error || (leaders.length === 0 && !loading)) return null;
+  // Si pas de données, on cache le composant
+  if (leaders.length === 0 && !loading) return null;
 
   return (
     <>
-      {/* --- VERSION MINI (En bas de page) --- */}
+      {/* --- 1. APERÇU (MINI) EN BAS DE PAGE --- */}
       <div 
-        onClick={() => setIsOpen(true)} // Ouvre la modale au clic
-        className="w-full mt-6 px-4 animate-in fade-in duration-700 cursor-pointer group"
+        onClick={() => setIsOpen(true)} 
+        className="w-full max-w-lg mt-4 px-4 animate-in fade-in duration-700 cursor-pointer group pb-8"
       >
         <div className="bg-slate-900/60 border border-slate-800 group-hover:border-blue-500/50 rounded-xl p-3 backdrop-blur-sm transition-all">
           
           <div className="flex justify-center items-center gap-2 mb-2">
-             <h3 className="text-xs font-bold text-slate-500 group-hover:text-blue-400 uppercase tracking-widest transition-colors">
-               🔥 Live Movers
+             <h3 className="text-[10px] font-bold text-slate-500 group-hover:text-blue-400 uppercase tracking-widest transition-colors">
+               🔥 Live Movers (Last Hours)
              </h3>
-             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 text-slate-500 group-hover:text-blue-400">
-               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-             </svg>
           </div>
 
           {loading ? (
              <div className="flex justify-center py-2">
-               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+               <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
              </div>
           ) : (
             <div className="space-y-1">
-              {/* On affiche seulement le TOP 3 dans le mini panneau */}
+              {/* On affiche seulement le TOP 3 */}
               {leaders.slice(0, 3).map((item, index) => (
                 <div key={item.user} className="flex justify-between items-center text-[10px] px-2 py-1 bg-slate-800/40 rounded border border-slate-700/30">
                   <div className="flex items-center gap-2">
@@ -126,19 +118,18 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* --- MODALE (PLEIN ÉCRAN) --- */}
+      {/* --- 2. MODALE (POP-UP) --- */}
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          {/* Container de la fenêtre */}
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsOpen(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full max-h-[70vh] flex flex-col shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
             
             {/* Header Modale */}
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50 rounded-t-2xl">
               <h2 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 uppercase tracking-wider">
-                Top Brains (Live)
+                Top Brains
               </h2>
               <button 
-                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                onClick={() => setIsOpen(false)}
                 className="p-1 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -157,8 +148,7 @@ export default function Leaderboard() {
                   "bg-slate-900 border-slate-800"
                 }`}>
                   <div className="flex items-center gap-3">
-                    {/* Badge de rang */}
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${
+                    <div className={`w-6 h-6 flex items-center justify-center rounded-full font-bold text-xs ${
                         index === 0 ? "bg-yellow-500 text-black" : 
                         index === 1 ? "bg-slate-400 text-black" :
                         index === 2 ? "bg-orange-500 text-black" :
@@ -166,34 +156,13 @@ export default function Leaderboard() {
                     }`}>
                       {index + 1}
                     </div>
-                    
-                    <div className="flex flex-col">
-                        <span className={`font-mono text-sm ${index < 3 ? "text-white font-bold" : "text-slate-400"}`}>
-                        {item.user.slice(0, 6)}...{item.user.slice(-4)}
-                        </span>
-                        {index === 0 && <span className="text-[9px] text-yellow-500 uppercase font-bold tracking-wider">Current Leader</span>}
-                    </div>
+                    <span className={`font-mono text-sm ${index < 3 ? "text-white font-bold" : "text-slate-400"}`}>
+                      {item.user.slice(0, 6)}...{item.user.slice(-4)}
+                    </span>
                   </div>
-                  
-                  <div className="text-right">
-                    <span className="block font-black text-emerald-400 text-lg">{item.score}</span>
-                    <span className="text-[9px] text-slate-600 uppercase">Points</span>
-                  </div>
+                  <span className="font-black text-emerald-400">{item.score} 🧠</span>
                 </div>
               ))}
-              
-              {leaders.length === 0 && (
-                <div className="text-center py-10 text-slate-500">
-                  No recent activity found.
-                </div>
-              )}
-            </div>
-
-            {/* Footer Modale */}
-            <div className="p-3 border-t border-slate-800 bg-slate-950/30 text-center">
-              <p className="text-[10px] text-slate-500">
-                Shows active players from the last ~6 hours.
-              </p>
             </div>
           </div>
         </div>

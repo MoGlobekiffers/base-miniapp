@@ -378,6 +378,11 @@ export default function WheelClientPage() {
         )}
       </div>
 
+       {/* 👇 AJOUT DU LEADERBOARD ICI */}
+      <div className="w-full max-w-lg pb-10">
+         <Leaderboard />
+      </div>
+
     </main>
   );
 }
