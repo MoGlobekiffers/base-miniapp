@@ -15,7 +15,7 @@ export const BADGES: Badge[] = [
     description: "A pink brain with a pacifier (10 pts)",
     image: "/badges/baby_brain.png", // <--- Corrigé (avec le r)
     category: "Score",
-    minScore: 10,
+    minScore: 25,
   },
   {
     id: 2,

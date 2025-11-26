@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
-import BrainScoreABI from "@/types/BrainScoreSigned.json"; // Ton fichier JSON complet
+import BrainScoreABI from "@/types/BrainScoreSigned.json"; 
 
+// Gestion de la clé privée avec ou sans 0x
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
 const PRIVATE_KEY = (rawKey.startsWith("0x") ? rawKey : "0x" + rawKey) as `0x${string}`;
+
 const BRAIN_SCORE_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 const BADGE_CONTRACT = process.env.NEXT_PUBLIC_BADGE_CONTRACT as `0x${string}`;
 
-// On définit le client en dehors pour éviter de le recréer à chaque fois
 const publicClient = createPublicClient({ 
   chain: base, 
   transport: http(process.env.NEXT_PUBLIC_RPC_URL || "https://base.llamarpc.com") 
@@ -23,45 +24,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    // 1. Lire le score du joueur sur la Blockchain
-    // ⚠️ CORRECTION ICI : On utilise .abi et getPlayer
+    // 1. Lire le score
     const data = await publicClient.readContract({
       address: BRAIN_SCORE_CONTRACT,
-      abi: BrainScoreABI.abi, // <--- AJOUT DE .abi (C'est ça qui plantait)
-      functionName: "getPlayer", // <--- C'est souvent getPlayer sur ton contrat
+      abi: BrainScoreABI.abi,
+      functionName: "getPlayer", 
       args: [userAddress],
     });
 
-    // getPlayer renvoie souvent [score, questsDone]. On veut le score (index 0).
-    // Si data est un tableau, on prend le premier élément. Sinon on prend data directement.
     const currentScore = Array.isArray(data) ? Number(data[0]) : Number(data);
 
     console.log(`User: ${userAddress} | Score: ${currentScore} | Badge: ${badgeId}`);
 
-    // 2. Vérification des conditions
+    // 2. Vérification des conditions (Mises à jour)
     let isEligible = false;
 
     switch (badgeId) {
       // --- Paliers de Score ---
-      case 1: isEligible = currentScore >= 10; break;   
+      case 1: isEligible = currentScore >= 25; break;   // MAJ: 25 pts
       case 2: isEligible = currentScore >= 50; break;   
       case 3: isEligible = currentScore >= 100; break;  
       case 4: isEligible = currentScore >= 500; break;  
       case 5: isEligible = currentScore >= 1000; break; 
 
-      // --- Gameplay (Logique simplifiée pour démo) ---
-      // Pour l'instant on accepte si le joueur a au moins commencé à jouer (score > 0)
+      // --- Gameplay ---
       case 10: isEligible = currentScore > 0; break; 
       case 11: isEligible = currentScore > 0; break; 
-      case 12: isEligible = currentScore > 0; break; 
-      case 13: isEligible = currentScore > 0; break; 
+      case 12: isEligible = currentScore > 0; break; // TODO: Vérifier via DB
+      case 13: isEligible = currentScore > 0; break; // TODO: Vérifier via DB
 
       // --- Spéciaux ---
-      case 20: isEligible = true; break; // Early Adopter : OK pour tout le monde mtn
-      case 21: 
-        const day = new Date().getDay();
-        isEligible = (day === 0 || day === 6); // Samedi ou Dimanche
-        break;
+      case 20: isEligible = true; break; // Early Adopter
+      case 21: isEligible = true; break; // Weekend Warrior (TODO: DB check)
 
       default: isEligible = false;
     }
@@ -70,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Not enough points (${currentScore}) or conditions not met` }, { status: 400 });
     }
 
-    // 3. Signature (Si éligible)
+    // 3. Signature
     const account = privateKeyToAccount(PRIVATE_KEY);
     
     const domain = {

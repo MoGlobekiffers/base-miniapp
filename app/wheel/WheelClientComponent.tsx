@@ -5,9 +5,6 @@ import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 import sdk from '@farcaster/frame-sdk';
 
-// 🛑 J'AI SUPPRIMÉ L'IMPORT QUI POSAIT PROBLÈME. 
-// On va appeler l'image directement par son URL locale.
-
 import type { QuizQuestion } from "./quizPools";
 import {
   getRandomBaseQuiz,
@@ -51,15 +48,33 @@ const COOLDOWN_SEC = 12 * 3600;
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 /* =======================
- * Brain points
+ * Brain points & Descriptions
  * ======================= */
+// 👇 MISE À JOUR DES POINTS SELON TA DEMANDE
 const QUEST_POINTS: Record<string, number> = {
-  "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
-  "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3,
-  "Test a top mini app": 4, "Bonus spin": 1, "Meme Factory": 4,
-  "Mint my NFT Free": 5, "Mini apps mashup": 4, "Crazy promo": 4,
-  Bankruptcy: -20, "Creative #gm": 3, "Daily check-in": 2,
-  "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
+  "Base Speed Quiz": 5, 
+  "Farcaster Flash Quiz": 5, 
+  "Mini app quiz": 5,
+  "Cast Party": 3, 
+  "Like Storm": 3, 
+  "Reply Sprint": 3, 
+  "Invite & Share": 3,
+  "Test a top mini app": 3, // Mis à jour (+3)
+  "Bonus spin": 1, 
+  "Meme Factory": 4,
+  "Mint my NFT Free": 3, // Mis à jour (+3)
+  "Mini apps mashup": 4, 
+  "Crazy promo": 4,
+  "Bankruptcy": -10, // Mis à jour (-10)
+  "Creative #gm": 3, 
+  "Daily check-in": 2,
+  "Mystery Challenge": 4, 
+  "Double points": 0, 
+  "Web3 Survivor": 8,
+};
+
+const QUEST_DESCRIPTIONS: Record<string, string> = {
+  "Base Speed Quiz": "Open the Base Speed Quiz card below and answer...",
 };
 
 /* =======================
@@ -232,6 +247,7 @@ export default function WheelClientPage() {
   const shortAddress = address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address ?? "";
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
+  
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
@@ -253,26 +269,26 @@ export default function WheelClientPage() {
           <ConnectWallet className="!h-8 !px-3 !text-xs" />
         )}
         {address && (
-          <button
-            onClick={() => disconnect()}
-            className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium"
-          >
+          <button onClick={() => disconnect()} className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium">
             Disconnect
           </button>
         )}
       </div>
 
+      {/* TITRE */}
       <div className="mt-4 mb-2 text-center">
         <h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 drop-shadow-sm">
           DailyWheel
         </h1>
       </div>
 
+      {/* INFO BAR */}
       <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono tracking-widest text-[10px] text-slate-500">
          {DEV_MODE && address && <button onClick={resetDaily} className="border border-emerald-500/50 text-emerald-300 px-1 rounded hover:bg-emerald-500/10 transition-colors">Reset</button>}
          <span>{cooldownLabel}</span>
       </div>
 
+      {/* PANEL RECLAMATION */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -302,10 +318,14 @@ export default function WheelClientPage() {
         </div>
       )}
 
+      {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
 
-        {/* FLÈCHE EXTÉRIEURE EN HAUT */}
-        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
+        {/* 1. POINTEUR (FLÈCHE) EN HAUT */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+          style={{ top: -10 }} 
+        >
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
               <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -335,18 +355,10 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* BOUTON SPIN CENTRAL AVEC IMAGE FIXE VIA CHEMIN PUBLIC DIRECT */}
+        {/* BOUTON SPIN CENTRAL AVEC LOGO BASE */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50  cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
-            
-            {/* 👇 CORRECTION : CHEMIN DIRECT VERS LE DOSSIER PUBLIC */}
-            <img 
-              src="/base-logo-in-blue.png" 
-              alt="Logo Base" 
-              className="absolute inset-0 w-full h-full object-cover z-0" 
-            />
-            
-            {/* Texte SPIN */}
+          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
+            <img src="/base-logo-in-blue.png" alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
             <span className="relative z-10 text-2xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
               SPIN
             </span>
@@ -362,13 +374,8 @@ export default function WheelClientPage() {
         {address ? (
            <BadgesPanel userAddress={address} currentScore={currentOnChainScore} />
         ) : (
-          <p className="text-center text-xs text-slate-500 py-4">Connect wallet to view badges</p>
+          <p className="text-center text-xs text-slate-600 py-4">Connect wallet to view badges</p>
         )}
-      </div>
-
-     {/* 👇 AJOUT DU LEADERBOARD ICI */}
-      <div className="w-full max-w-lg pb-10">
-         <Leaderboard />
       </div>
 
     </main>
