@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 import sdk from '@farcaster/frame-sdk';
-// 👇 IMPORT DE L'IMAGE POUR ÊTRE SÛR QU'ELLE S'AFFICHE
+// IMPORT IMAGE
 import BaseLogo from '../../public/base-logo-in-blue.png'; 
 
 import type { QuizQuestion } from "./quizPools";
@@ -27,7 +27,7 @@ import BadgesPanel from "../components/BadgesPanel";
 /* =======================
  * Quests & appearance
  * ======================= */
-
+// Raccourci pour la lisibilité, ne pas modifier la liste réelle
 const QUESTS: string[] = [
   "Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party",
   "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app",
@@ -51,7 +51,7 @@ const COOLDOWN_SEC = 12 * 3600;
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 /* =======================
- * Brain points
+ * Brain points & Descriptions
  * ======================= */
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
@@ -62,11 +62,14 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
+// Placeholder pour les descriptions (ne pas toucher à vos vraies descriptions)
 const QUEST_DESCRIPTIONS: Record<string, string> = {
   "Base Speed Quiz": "Open the Base Speed Quiz card below and answer...",
-  // ... (Gardez vos descriptions longues ici, je raccourcis pour la lisibilité du code ici)
 };
 
+/* =======================
+ * Helpers
+ * ======================= */
 function deg2rad(d: number) { return (d * Math.PI) / 180; }
 
 function wedgePath(rOut: number, rIn: number, a0: number, a1: number): string {
@@ -84,9 +87,6 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number): string {
   return `M ${x0} ${y0} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x1} ${y1} L ${x2} ${y2} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x3} ${y3} Z`;
 }
 
-/* =======================
- * Onchain helpers
- * ======================= */
 async function getPlayerNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
   const [total, quests] = (await publicClient.readContract({
@@ -237,27 +237,24 @@ export default function WheelClientPage() {
   const shortAddress = address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address ?? "";
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
-const isQuiz = [
-    "Base Speed Quiz", 
-    "Farcaster Flash Quiz", 
-    "Mini app quiz"
-  ].includes(result || "");
+  
+  // Définition de isQuiz pour le panneau de réclamation
+  const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
   return (
-    // 👇 1. PADDING REDUIT AU MINIMUM
-    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden overflow-y-auto">
+    // Container principal avec padding minimal et centrage
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden">
       
-      <div className="flex w-full justify-between items-center px-2 max-w-md">
-        {/* TITRE COMPACT */}
-        <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+      {/* HEADER ULTRA COMPACT */}
+      <div className="flex w-full justify-between items-center px-2 max-w-md scale-95 origin-top">
+        <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
           DailyWheel
         </h1>
-        {/* HEADER COMPACT (WALLET + SCORE) */}
         <div className="flex items-center gap-2 scale-90 origin-right">
           {address ? (
             <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-700 rounded-full px-2 py-1">
-               <span className="text-xs font-mono text-slate-400">{shortAddress}</span>
+               <span className="text-[10px] font-mono text-slate-400">{shortAddress}</span>
                <span className="text-xs text-amber-300 font-bold border-l border-slate-700 pl-2">{currentOnChainScore} 🧠</span>
             </div>
           ) : (
@@ -266,15 +263,15 @@ const isQuiz = [
         </div>
       </div>
 
-      {/* INFO BAR (Cooldown / Reset) */}
-      <div className="flex justify-center items-center gap-2 my-1 h-4">
-         {DEV_MODE && address && <button onClick={resetDaily} className="text-[9px] border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}
-         <span className="text-[10px] text-slate-500 font-mono tracking-widest">{cooldownLabel}</span>
+      {/* INFO BAR COMPACTE */}
+      <div className="flex justify-center items-center gap-2 my-1 h-4 scale-90 font-mono tracking-widest text-[9px] text-slate-500">
+         {DEV_MODE && address && <button onClick={resetDaily} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}
+         <span>{cooldownLabel}</span>
       </div>
 
       {showClaimPanel && (
-        /* PANEL DE RECLAMATION COMPACT */
-        <div className="w-full max-w-xs mb-2 z-50 animate-in fade-in slide-in-from-bottom-4">
+        /* PANEL RECLAMATION */
+        <div className="w-full max-w-xs mb-1 z-50 animate-in fade-in slide-in-from-bottom-4 scale-90 origin-bottom">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-2 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             <div className="text-xs font-bold text-emerald-400">Quest Complete!</div>
             <button
@@ -302,8 +299,8 @@ const isQuiz = [
         </div>
       )}
 
-      {/* 👇 2. ROUE RÉDUITE POUR MOBILE (max-w-[300px]) */}
-      <div className="relative w-full max-w-[300px] aspect-square md:max-w-[500px] my-1">
+      {/* 👇 2. ROUE AGRANDIE (max-w passa à 360px) */}
+      <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mt-1 mb-0">
         
         {/* POINTEUR (Ajusté) */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -5 }}>
@@ -318,6 +315,7 @@ const isQuiz = [
           </svg>
         </div>
         
+        {/* SVG ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
@@ -335,27 +333,27 @@ const isQuiz = [
           </g>
         </svg>
 
-        {/* 👇 3. BOUTON SPIN AVEC IMPORT D'IMAGE DIRECT */}
+        {/* 👇 1. BOUTON SPIN CORRIGÉ : Texte plus gros, z-index, drop-shadow */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-20 h-20 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale" : "cursor-pointer hover:scale-105"}`}>
-            {/* On utilise la variable importée BaseLogo (ligne 7) */}
-            <img src={BaseLogo.src} alt="Spin" className="absolute inset-0 w-full h-full object-cover" />
-            <span className="relative z-10 text-lg font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">Spin</span>
+          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-24 h-24 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.8)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale" : "cursor-pointer hover:scale-105"}`}>
+            <img src={BaseLogo.src} alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
+            {/* TEXTE SPIN : Agrandit (text-2xl), gras, et grosse ombre portée pour le détacher du fond */}
+            <span className="relative z-20 text-2xl font-black text-white drop-shadow-[0_3px_3px_rgba(0,0,0,1)] uppercase tracking-widest">Spin</span>
           </button>
         </div>
       </div>
 
-      {/* --- BADGES (COMPACT) --- */}
-      <div className="w-full max-w-4xl mt-2 border-t border-slate-800/50 pt-2 pb-10 flex-1">
-        <h2 className="text-xs font-bold mb-2 text-center text-slate-500 uppercase tracking-widest">Your Trophy Room</h2>
-        {address ? (
-          // On passe une classe pour réduire la taille des badges si le composant le permet, sinon c'est le CSS global
-          <div className="scale-90 origin-top">
+      {/* 👇 3. BADGES DRASTIQUEMENT RÉDUITS (Scale 60% et remontés) */}
+      <div className="w-full max-w-4xl border-t border-slate-800/50 pt-2 flex-1 relative">
+        {/* On applique une réduction d'échelle massive (60%) et on remonte le bloc avec une marge négative */}
+        <div className="scale-60 origin-top -mt-6"> 
+          <h2 className="text-sm font-bold mb-2 text-center text-slate-500 uppercase tracking-widest">Your Trophy Room</h2>
+          {address ? (
              <BadgesPanel userAddress={address} currentScore={currentOnChainScore} />
-          </div>
-        ) : (
-          <p className="text-center text-[10px] text-slate-600">Connect wallet to view badges</p>
-        )}
+          ) : (
+            <p className="text-center text-xs text-slate-600">Connect wallet to view badges</p>
+          )}
+        </div>
       </div>
 
     </main>
