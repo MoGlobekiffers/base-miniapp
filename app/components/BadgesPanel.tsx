@@ -1,93 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { useWriteContract, useReadContract, useAccount } from "wagmi";
+import { useWriteContract, useReadContract } from "wagmi";
 import { BADGES } from "@/app/config/badges";
-import BrainBadgesABI from "@/types/BrainBadges.json";
+import BrainBadgesABI from "@/types/BrainBadges.json"; // Assurez-vous que ce chemin est bon
 
 const BADGE_CONTRACT = process.env.NEXT_PUBLIC_BADGE_CONTRACT as `0x${string}`;
 
-// 👇 NOUVEAU : ABI minimale pour la lecture (balanceOf)
+// ABI Minimale pour la lecture (si le JSON complet pose problème)
 const MINIMAL_BADGE_ABI = [{
   "inputs": [{"internalType":"address","name":"account","type":"address"}, {"internalType":"uint256","name":"id","type":"uint256"}],
   "name": "balanceOf",
   "outputs": [{"internalType":"uint256","name":"","type":"uint256"}],
   "stateMutability": "view",
   "type": "function"
-}] as const; // Le 'as const' est important pour Wagmi
+}, {
+  "inputs": [{"internalType":"uint256","name":"id","type":"uint256"}, {"internalType":"uint256","name":"amount","type":"uint256"}, {"internalType":"bytes","name":"data","type":"bytes"}],
+  "name": "mint",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}] as const;
 
 export default function BadgesPanel({ userAddress, currentScore }: { userAddress: `0x${string}`, currentScore?: number }) {
-  const { writeContract, error: writeError } = useWriteContract();
+  const { writeContract } = useWriteContract();
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
-  // Cette fonction sera passée aux cartes pour qu'elles puissent se rafraîchir
-  // (C'est géré individuellement dans le composant BadgeCard plus bas)
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
-      {BADGES.map((badge) => (
-        <BadgeCard 
-          key={badge.id} 
-          badge={badge} 
-          userAddress={userAddress} 
-          currentScore={currentScore || 0}
-          writeContract={writeContract}
-          setLoadingId={setLoadingId}
-          loadingId={loadingId}
-        />
-      ))}
-    </div>
-  );
-}
-
-// J'ai sorti BadgeCard et ajouté la logique de rafraichissement
-function BadgeCard({ badge, userAddress, currentScore, writeContract, setLoadingId, loadingId }: any) {
-  
-  // 1. On récupère la fonction 'refetch' en plus de la donnée
-  const { data: hasBadge, refetch } = useReadContract({
-    address: BADGE_CONTRACT,
-    abi: MINIMAL_BADGE_ABI,
-    functionName: "balanceOf",
-    args: [userAddress, BigInt(badge.id)],
-    query: {
-      staleTime: 0, // Ne jamais mettre en cache, toujours vérifier
-    }
-  });
-
-  const isOwned = Number(hasBadge) > 0;
-  const isLocked = !isOwned && (badge.minScore && currentScore < badge.minScore);
-  const isLoading = loadingId === badge.id;
-
-  const handleMint = async () => {
-    setLoadingId(badge.id);
+  const mintBadge = async (badgeId: number) => {
+    setLoadingId(badgeId);
     try {
-      // Appel API
       const res = await fetch("/api/badge-sign", {
         method: "POST",
-        body: JSON.stringify({ userAddress, badgeId: badge.id }),
+        body: JSON.stringify({ userAddress, badgeId }),
       });
       const data = await res.json();
 
       if (data.error) {
-        alert("Error : " + data.error);
+        alert("Error: " + data.error);
         setLoadingId(null);
         return;
       }
 
-      // Appel Blockchain
       writeContract({
         address: BADGE_CONTRACT,
-        abi: BrainBadgesABI.abi || BrainBadgesABI,
+        abi: BrainBadgesABI.abi || MINIMAL_BADGE_ABI, // Fallback sur l'ABI minimale
         functionName: "mint",
-        args: [BigInt(badge.id), BigInt(data.nonce), data.signature],
+        args: [BigInt(badgeId), BigInt(data.nonce), data.signature],
       }, {
-        onSuccess: async () => {
-          console.log("Succès ! Rafraîchissement en cours...");
-          // 👇 C'EST ICI LA MAGIE : On attend 2s puis on force la vérification
-          setTimeout(() => {
-             refetch(); 
-             setLoadingId(null);
-          }, 4000); // 4 secondes pour être sûr que la blockchain a indexé
+        onSuccess: () => {
+           console.log("Mint submitted!");
+           setTimeout(() => setLoadingId(null), 5000); // Reset loading après 5s
         },
         onError: (e: any) => {
           console.error(e);
@@ -101,47 +63,77 @@ function BadgeCard({ badge, userAddress, currentScore, writeContract, setLoading
   };
 
   return (
-    <div className={`border rounded-lg p-4 flex flex-col items-center text-center transition-all duration-500
-      ${isOwned ? "bg-green-900/20 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)] scale-105" : 
-        isLocked ? "bg-slate-900 border-slate-800 opacity-60" : "bg-slate-800 border-slate-600"
-      }`}>
-      
-      <div className={`w-16 h-16 mb-3 rounded-full flex items-center justify-center overflow-hidden border-2 
-        ${isOwned ? "border-green-400" : isLocked ? "border-slate-700 bg-slate-950" : "border-slate-500 bg-slate-900"}`}>
-         
-         {isLocked ? (
-           <span className="text-2xl">🔒</span>
-         ) : (
-           <img src={badge.image} alt={badge.name} className={`w-full h-full object-cover ${!isOwned ? "grayscale opacity-80" : ""}`} 
-                onError={(e) => e.currentTarget.src = "https://placehold.co/100x100/333/FFF?text=?"}/> 
-         )}
-      </div>
-      
-      <h3 className="font-bold text-sm mb-1">{badge.name}</h3>
-      <p className="text-[10px] text-slate-400 mb-3 h-8 leading-tight">{badge.description}</p>
-      
-      {isOwned ? (
-        <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/50 animate-pulse">
-          OWNED ✅
-        </span>
-      ) : (
-        <button 
-          onClick={handleMint}
-          disabled={isLoading || isLocked}
-          className={`px-4 py-1.5 text-xs rounded-lg font-semibold transition-all w-full
-            ${isLocked 
-              ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-              : "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/50 hover:scale-105"
-            }
-          `}
-        >
-          {isLoading 
-      ? "Minting..." /* CHANGÉ */
-      : isLocked 
-        ? `${badge.minScore} pts required` /* CHANGÉ (ex: 10 pts required) */
-        : badge.category === "Score" ? "Claim" : "Check Eligibility" /* CHANGÉ */
+    // GRILLE COMPACTE (Style Croquis) : 4 colonnes sur mobile, 6 sur ordi
+    <div className="grid grid-cols-4 md:grid-cols-6 gap-3 p-2">
+      {BADGES.map((badge) => (
+        <BadgeItem 
+          key={badge.id} 
+          badge={badge} 
+          userAddress={userAddress} 
+          currentScore={currentScore || 0}
+          onMint={() => mintBadge(badge.id)}
+          loading={loadingId === badge.id}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BadgeItem({ badge, userAddress, currentScore, onMint, loading }: any) {
+  // Lecture de la balance
+  const { data: hasBadge } = useReadContract({
+    address: BADGE_CONTRACT,
+    abi: MINIMAL_BADGE_ABI,
+    functionName: "balanceOf",
+    args: [userAddress, BigInt(badge.id)],
+    query: { staleTime: 0, enabled: !!userAddress }
+  });
+
+  const isOwned = Number(hasBadge) > 0;
+  // Logique de verrouillage
+  const isScoreBadge = badge.category === "Score";
+  const isUnlockable = !isOwned && isScoreBadge && (currentScore >= badge.minScore);
+  const isLocked = !isOwned && !isUnlockable;
+
+  // Click handler : seulement si déblocable et pas possédé
+  const handleClick = () => {
+    if (isUnlockable || (!isOwned && !isScoreBadge)) {
+      onMint();
     }
-  </button>
+  };
+
+  return (
+    <div 
+      onClick={handleClick}
+      className={`
+        relative aspect-square rounded-lg border-2 flex items-center justify-center overflow-hidden cursor-pointer transition-all
+        ${isOwned 
+          ? "border-emerald-500 bg-emerald-900/30 shadow-[0_0_10px_rgba(16,185,129,0.4)]" // POSSÉDÉ
+          : isUnlockable 
+            ? "border-yellow-400 bg-yellow-900/20 animate-pulse" // PRÊT À MINT
+            : "border-slate-800 bg-slate-900/50 opacity-50 grayscale" // VERROUILLÉ
+        }
+      `}
+    >
+      {/* Image du Badge */}
+      <img 
+        src={badge.image} 
+        alt={badge.name} 
+        className="w-3/4 h-3/4 object-contain" 
+      />
+
+      {/* Indicateur de chargement */}
+      {loading && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Indicateur "Check" si possédé */}
+      {isOwned && (
+        <div className="absolute bottom-0 right-0 bg-emerald-500 text-white p-[2px] rounded-tl-md">
+          <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path></svg>
+        </div>
       )}
     </div>
   );
