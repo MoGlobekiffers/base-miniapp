@@ -59,10 +59,6 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
-const QUEST_DESCRIPTIONS: Record<string, string> = {
-  "Base Speed Quiz": "Open the Base Speed Quiz card below and answer...",
-};
-
 /* =======================
  * Helpers
  * ======================= */
@@ -147,6 +143,8 @@ export default function WheelClientPage() {
   });
 
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
+  const brain = currentOnChainScore; 
+  const hasDouble = false; 
   
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -160,7 +158,16 @@ export default function WheelClientPage() {
   
   useEffect(() => { setMounted(true); }, []);
 
-  /* Cooldown */
+  // 👇 CORRECTION : DÉFINITION DE LA VARIABLE MANQUANTE
+  const anglePerSegment = 360 / SEGMENTS;
+
+  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => {
+    const a0 = i * anglePerSegment;
+    const a1 = (i + 1) * anglePerSegment;
+    const mid = a0 + anglePerSegment / 2;
+    return { i, a0, a1, mid, color: COLORS[i % COLORS.length], label: QUESTS[i] };
+  }), [anglePerSegment]);
+
   useEffect(() => {
     if (!address) { setCooldown(0); return; }
     if (DEV_MODE) { setCooldown(0); return; }
@@ -224,6 +231,7 @@ export default function WheelClientPage() {
   const shortAddress = address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address ?? "";
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
+  
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
@@ -245,23 +253,29 @@ export default function WheelClientPage() {
           <ConnectWallet className="!h-8 !px-3 !text-xs" />
         )}
         {address && (
-          <button onClick={() => disconnect()} className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium">
+          <button
+            onClick={() => disconnect()}
+            className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium"
+          >
             Disconnect
           </button>
         )}
       </div>
 
+      {/* TITRE */}
       <div className="mt-4 mb-2 text-center">
         <h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 drop-shadow-sm">
           DailyWheel
         </h1>
       </div>
 
+      {/* INFO BAR */}
       <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono tracking-widest text-[10px] text-slate-500">
          {DEV_MODE && address && <button onClick={resetDaily} className="border border-emerald-500/50 text-emerald-300 px-1 rounded hover:bg-emerald-500/10 transition-colors">Reset</button>}
          <span>{cooldownLabel}</span>
       </div>
 
+      {/* PANEL RECLAMATION */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -291,10 +305,14 @@ export default function WheelClientPage() {
         </div>
       )}
 
+      {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
 
-        {/* POINTEUR FLÈCHE EN HAUT (Extérieur) */}
-        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
+        {/* POINTEUR (FLÈCHE) EN HAUT */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+          style={{ top: -5 }} 
+        >
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
               <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -302,10 +320,17 @@ export default function WheelClientPage() {
                 <stop offset="100%" stopColor="#3b82f6" />
               </linearGradient>
             </defs>
-            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+            <path
+              d="M25 40 L10 10 H40 Z" 
+              fill="url(#neonArrow)"
+              stroke="#cffafe"
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
 
+        {/* SVG ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
@@ -323,13 +348,13 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* BOUTON SPIN CSS PUR (Bleu Base + Texte) - Pas d'image externe */}
+        {/* BOUTON SPIN AVEC LOGO BASE (URL WEB POUR ÉVITER LES ERREURS LOCALES) */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-white/20 shadow-[0_0_30px_rgba(0,82,255,0.8)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale cursor-not-allowed bg-slate-800" : "cursor-pointer hover:scale-105 bg-gradient-to-br from-[#0052FF] to-[#0033CC]"}`}>
-            {/* Design CSS Base */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700 opacity-100"></div>
+          <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
+            {/* Utilisation d'une URL externe fiable pour le logo */}
+            <img src="https://raw.githubusercontent.com/base-org/brand-kit/master/logo/in-product/Base_Symbol_Blue.svg" alt="Spin" className="absolute inset-0 w-full h-full object-cover p-1" />
             {/* Texte SPIN */}
-            <span className="relative z-10 text-3xl font-black text-white drop-shadow-md uppercase tracking-widest">
+            <span className="relative z-10 text-3xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
               SPIN
             </span>
           </button>
@@ -338,14 +363,16 @@ export default function WheelClientPage() {
 
       {/* --- SECTION BADGES COMPACTE --- */}
       <div className="w-full max-w-lg border-t border-slate-800/50 pt-4 px-4">
-        <h2 className="text-sm font-bold mb-4 text-center text-slate-500 uppercase tracking-widest">
-          Your Trophy Room
-        </h2>
-        {address ? (
-           <BadgesPanel userAddress={address} currentScore={currentOnChainScore} />
-        ) : (
-          <p className="text-center text-xs text-slate-500 py-4">Connect wallet to view badges</p>
-        )}
+        <div className="scale-50 origin-top -mt-10"> 
+          <h2 className="text-sm font-bold mb-2 text-center text-slate-500 uppercase tracking-widest">
+            Your Trophy Room
+          </h2>
+          {address ? (
+             <BadgesPanel userAddress={address} currentScore={currentOnChainScore} />
+          ) : (
+            <p className="text-center text-xs text-slate-600">Connect wallet to view badges</p>
+          )}
+        </div>
       </div>
 
     </main>
