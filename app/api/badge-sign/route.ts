@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
-import BrainScoreABI from "@/types/BrainScoreSigned.json"; 
+import BrainScoreABI from "../../../types/BrainScoreSigned.json";
 import { kv } from "@vercel/kv";
 
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
