@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // 1. Lire le score Blockchain
     const data = await publicClient.readContract({
       address: BRAIN_SCORE_CONTRACT,
-      abi: BrainScoreABI.abi,
+      abi: BrainScoreABI.abi as any,
       functionName: "getPlayer", 
       args: [userAddress],
     });
