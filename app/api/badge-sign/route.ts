@@ -24,12 +24,14 @@ export async function POST(request: Request) {
     if (!userAddress || !badgeId) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
     // 1. Lire le score Blockchain
+// 1. Lire le score Blockchain
+    // On caste TOUT l'objet en 'any' pour faire taire TypeScript
     const data = await publicClient.readContract({
       address: BRAIN_SCORE_CONTRACT,
-      abi: BrainScoreABI.abi as any,
+      abi: BrainScoreABI.abi,
       functionName: "getPlayer", 
       args: [userAddress],
-    });
+    } as any);
     const currentScore = Array.isArray(data) ? Number(data[0]) : Number(data);
 
     // 2. Vérification des conditions
