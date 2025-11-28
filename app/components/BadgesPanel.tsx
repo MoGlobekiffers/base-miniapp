@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useWriteContract, useReadContract } from "wagmi";
-import { BADGES } from "@/app/config/badges";
-import BrainBadgesABI from "@/types/BrainBadges.json"; 
-
+import { BADGES } from "../config/badges"; // On remonte de 'components' vers 'app' puis 'config'
+import BrainBadgesABI from "../../types/BrainBadges.json"; // On remonte de 'components' vers 'app' puis racine puis 'types'
 const BADGE_CONTRACT = process.env.NEXT_PUBLIC_BADGE_CONTRACT as `0x${string}`;
 
 const MINIMAL_BADGE_ABI = [{
