@@ -46,7 +46,7 @@ export default function BadgesPanel({ userAddress, currentScore }: { userAddress
         abi: BrainBadgesABI.abi || MINIMAL_BADGE_ABI,
         functionName: "mint",
         args: [BigInt(badgeId), BigInt(data.nonce), data.signature],
-      }, {
+      }as any, {
         onSuccess: () => {
            console.log("Mint submitted!");
            setTimeout(() => {
