@@ -64,7 +64,7 @@ export async function POST(request: Request) {
           }],
           functionName: 'balanceOf',
           args: [player],
-        });
+        }as any);
 
         if (Number(balance) === 0) {
            return NextResponse.json({ error: "Vous ne possédez pas le NFT 'Pixel Brain Parade' !" }, { status: 400 });
