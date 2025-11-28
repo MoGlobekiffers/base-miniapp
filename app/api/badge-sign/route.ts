@@ -3,13 +3,16 @@ import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import BrainScoreABI from "../../../types/BrainScoreSigned.json";
-import { kv } from "@vercel/kv";
+// 👇 CHANGEMENT ICI AUSSI
+import Redis from "ioredis";
 
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
 const PRIVATE_KEY = (rawKey.startsWith("0x") ? rawKey : "0x" + rawKey) as `0x${string}`;
-
 const BRAIN_SCORE_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 const BADGE_CONTRACT = process.env.NEXT_PUBLIC_BADGE_CONTRACT as `0x${string}`;
+
+// Connexion Redis
+const redis = new Redis(process.env.REDIS_URL!);
 
 const publicClient = createPublicClient({ 
   chain: base, 
@@ -23,9 +26,7 @@ export async function POST(request: Request) {
 
     if (!userAddress || !badgeId) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
-    // 1. Lire le score Blockchain
-// 1. Lire le score Blockchain
-    // On caste TOUT l'objet en 'any' pour faire taire TypeScript
+    // 1. Lire Score
     const data = await publicClient.readContract({
       address: BRAIN_SCORE_CONTRACT,
       abi: BrainScoreABI.abi,
@@ -34,40 +35,37 @@ export async function POST(request: Request) {
     } as any);
     const currentScore = Array.isArray(data) ? Number(data[0]) : Number(data);
 
-    // 2. Vérification des conditions
+    // 2. Vérification
     let isEligible = false;
 
     switch (badgeId) {
-      // --- Score Tiers ---
       case 1: isEligible = currentScore >= 25; break;   
       case 2: isEligible = currentScore >= 50; break;   
       case 3: isEligible = currentScore >= 100; break;  
       case 4: isEligible = currentScore >= 500; break;  
       case 5: isEligible = currentScore >= 1000; break; 
 
-      // --- Gameplay ---
-      case 10: isEligible = currentScore > 0; break; // First Blood (Avoir joué au moins une fois)
+      case 10: isEligible = currentScore > 0; break; 
       
-      case 11: // 🐦 PHOENIX : Avoir fait faillite
-        const hasBankrupted = await kv.get(`has_bankrupted:${player}`);
-        isEligible = !!hasBankrupted; // Doit être vrai
+      case 11: // Phoenix
+        const hasBankrupted = await redis.get(`has_bankrupted:${player}`);
+        isEligible = !!hasBankrupted;
         break;
       
-      case 12: // 🎲 GAMBLER : 50 Spins
-        const spins = await kv.get(`total_spins:${player}`);
+      case 12: // Gambler
+        const spins = await redis.get(`total_spins:${player}`);
         isEligible = Number(spins) >= 50; 
         break;
 
-      case 13: // 🍀 LUCKY BASTARD : 10 Bonus Spins
-        const bonusSpins = await kv.get(`bonus_spins:${player}`);
+      case 13: // Lucky Bastard
+        const bonusSpins = await redis.get(`bonus_spins:${player}`);
         isEligible = Number(bonusSpins) >= 10;
         break;
 
-      // --- Spéciaux ---
-      case 20: isEligible = true; break; // Early Adopter
+      case 20: isEligible = true; break; 
       
-      case 21: // ⚔️ WEEKEND WARRIOR : 8 Weekends
-        const weekends = await kv.get(`weekend_score:${player}`);
+      case 21: // Weekend Warrior
+        const weekends = await redis.get(`weekend_score:${player}`);
         isEligible = Number(weekends) >= 8; 
         break;
 
@@ -93,6 +91,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Server Error" }, { status: 500 });
   }
 }

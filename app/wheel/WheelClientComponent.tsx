@@ -5,8 +5,6 @@ import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 import sdk from '@farcaster/frame-sdk';
 
-// On utilise le chemin absolu pour l'image, pas d'import pour éviter les bugs Vercel
-
 import type { QuizQuestion } from "./quizPools";
 import {
   getRandomBaseQuiz,
@@ -92,17 +90,14 @@ async function getPlayerNonce(player: string) {
   return Number(quests) + 1;
 }
 
-// 👇 FONCTION MISE À JOUR : Accepte 'proof'
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
   const deadline = Math.floor(Date.now() / 1000) + 300; 
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // On envoie la preuve au backend
     body: JSON.stringify({ player, questId, delta, nonce, deadline, proof }),
   });
   const data = await res.json();
-  // On renvoie l'erreur précise du serveur (ex: "Vous ne possédez pas le NFT")
   if (!res.ok) throw new Error(data.error || "Failed to sign reward");
   return { signature: data.signature as `0x${string}`, deadline };
 }
@@ -198,7 +193,12 @@ export default function WheelClientPage() {
       const final = ((finalRotation % 360) + 360) % 360;
       const normalized = ((POINTER_ANGLE - final) % 360 + 360) % 360;
       const idx = Math.floor(normalized / anglePerSegment) % SEGMENTS;
-      const questLabel = QUESTS[idx];
+      
+      // 👇 ICI : ON FORCE LA ROUE À TOMBER SUR "Mint my NFT Free" POUR LE TEST
+      // Changez cette ligne pour "const questLabel = QUESTS[idx];" quand le test est fini.
+      const questLabel = "Mint my NFT Free"; 
+      // const questLabel = QUESTS[idx]; // <-- Ligne originale commentée
+
       setResult(questLabel);
       if (questLabel === "Base Speed Quiz") setActiveQuiz(getRandomBaseQuiz());
       else if (questLabel === "Farcaster Flash Quiz") setActiveQuiz(getRandomFarcasterQuiz());
@@ -275,14 +275,30 @@ export default function WheelClientPage() {
       {/* PANEL RECLAMATION */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-            <div className="text-sm font-bold text-emerald-400">Quest Complete!</div>
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            
+            <div className="flex w-full justify-between items-center mb-2">
+                <div className="text-sm font-bold text-emerald-400">Quest Complete!</div>
+                
+                {/* 👇 AJOUT : BOUTON POUR ALLER MINTER LE NFT */}
+                {result === "Mint my NFT Free" && (
+                    <a 
+                      href="https://opensea.io/fr/collection/pixel-brain-parade-330142156" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-1 transition-transform hover:scale-105"
+                    >
+                      <span>Go Mint 🔗</span>
+                    </a>
+                )}
+            </div>
+
             <button
               disabled={!address || claimed || !walletClient}
               onClick={async () => {
                 if (!address || !result || !walletClient) return;
                 
-                // 👇 VÉRIFICATION QUIZ FRONTEND
+                // Vérification Quiz
                 if (isQuiz && selectedChoice === null) {
                     alert("Please select an answer!");
                     return;
@@ -294,7 +310,7 @@ export default function WheelClientPage() {
                   const delta = basePoints;
                   const nonce = await getPlayerNonce(address);
                   
-                  // 👇 ENVOI DE LA PREUVE (PROOF) AU BACKEND
+                  // Preuve Quiz
                   const proof = isQuiz ? selectedChoice : null;
 
                   const { signature, deadline } = await signReward(address, result, delta, nonce, proof);
@@ -305,11 +321,11 @@ export default function WheelClientPage() {
                   refetchScore();
                 } catch (err: any) { 
                   console.error(err); 
-                  // Affichage du message d'erreur du serveur (ex: "Vous n'avez pas le NFT")
+                  // Affiche l'erreur (ex: Vous n'avez pas le NFT)
                   alert(err.message || "Error sending onchain claim"); 
                 }
               }}
-              className={`px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95
+              className={`w-full px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95
                   ${!address || claimed ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-emerald-500 text-white hover:bg-emerald-400"}`}
             >
               {claimed ? "Done" : `Claim +${QUEST_POINTS[result] ?? 0}`}
@@ -321,7 +337,6 @@ export default function WheelClientPage() {
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
 
-        {/* POINTEUR */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -334,7 +349,6 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
-        {/* SVG ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
@@ -352,10 +366,9 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* BOUTON SPIN AVEC LOGO BASE (Chemin public) */}
+        {/* BOUTON SPIN */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
-            {/* Utilisation du chemin absolu pour l'image */}
             <img src="/base-logo-in-blue.png" alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
             <span className="relative z-10 text-2xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] uppercase tracking-widest">
               SPIN

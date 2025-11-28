@@ -17,6 +17,7 @@
     "@vercel/og": "^0.8.5",
     "canvas-confetti": "^1.9.4",
     "ethers": "^6.15.0",
+    "ioredis": "^5.8.2",
     "next": "16.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
