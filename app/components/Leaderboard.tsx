@@ -15,7 +15,7 @@ const publicClient = createPublicClient({
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 // On scanne les 10 000 derniers blocs (environ 5h) pour la stabilité
-const SAFE_BLOCK_RANGE = 10000n; 
+const SAFE_BLOCK_RANGE = BigInt(10000); 
 
 type LeaderboardItem = {
   user: string;
