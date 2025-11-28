@@ -196,7 +196,7 @@ export default function WheelClientPage() {
       
       // 👇 ICI : ON FORCE LA ROUE À TOMBER SUR "Mint my NFT Free" POUR LE TEST
       // Changez cette ligne pour "const questLabel = QUESTS[idx];" quand le test est fini.
-      const questLabel = "Mint my NFT Free"; 
+      const questLabel = QUESTS[idx]; 
       // const questLabel = QUESTS[idx]; // <-- Ligne originale commentée
 
       setResult(questLabel);
