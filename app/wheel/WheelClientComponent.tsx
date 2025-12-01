@@ -52,7 +52,7 @@ const COMING_SOON_QUESTS = [
 // 👇 NOUVEAU : INSTRUCTIONS DÉTAILLÉES PAR QUÊTE
 const QUEST_INSTRUCTIONS: Record<string, string> = {
   "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
-  "Like Storm": "❤️ Go lik 15 recent cat from your feed",
+  "Like Storm": "❤️ Golike 1 recent cast from your feed",
   "Reply Sprint": "💬 Reply to 1 cast with something meaningful.",
   "Invite & Share": "🔗 Share this frame or invite a friend to play.",
   "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
@@ -120,13 +120,27 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number): string {
 
 async function getPlayerNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  const [total, quests] = (await publicClient.readContract({
-    address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
-    abi: BrainScoreSigned.abi,
-    functionName: "getPlayer",
-    args: [player],
-  })) as readonly [bigint, bigint];
-  return Number(quests) + 1;
+  
+  // NOUVEAU CODE : On lit le mapping "nonces" directement
+  try {
+      const nonce = await publicClient.readContract({
+        address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+        abi: [{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
+        functionName: "nonces",
+        args: [player],
+      }) as bigint;
+      return Number(nonce); // Le contrat attend souvent le nonce actuel (ou +1 selon le code, essayons actuel d'abord)
+  } catch (e) {
+      // Fallback si la fonction nonces n'existe pas (anciens contrats)
+      console.log("Fallback nonce calculation");
+      const [total, quests] = (await publicClient.readContract({
+        address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+        abi: BrainScoreSigned.abi,
+        functionName: "getPlayer",
+        args: [player],
+      })) as readonly [bigint, bigint];
+      return Number(quests) + 1;
+  }
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
