@@ -127,11 +127,11 @@ async function getPlayerNonce(player: string) {
         address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
         abi: [{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
         functionName: "nonces",
-        args: [player],
+        // 👇 CORRECTION ICI : On force le typage
+        args: [player as `0x${string}`],
       }) as bigint;
-      return Number(nonce); // Le contrat attend souvent le nonce actuel (ou +1 selon le code, essayons actuel d'abord)
+      return Number(nonce); 
   } catch (e) {
-      // Fallback si la fonction nonces n'existe pas (anciens contrats)
       console.log("Fallback nonce calculation");
       const [total, quests] = (await publicClient.readContract({
         address: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
