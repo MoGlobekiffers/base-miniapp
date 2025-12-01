@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // 👇 CORRECTION MAJEURE : "DailyWheelBrain" (Vu sur votre capture)
+    // Nom exact trouvé dans votre contrat
     const domain = {
       name: "DailyWheelBrain", 
       version: "1",
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
       ],
     } as const;
 
-    const isNegative = delta < 0;
-    const absAmount = BigInt(Math.abs(delta));
+    // On utilise la deadline reçue ou on en génère une
+    const usedDeadline = deadline ? BigInt(deadline) : BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
       domain,
@@ -55,11 +55,12 @@ export async function POST(req: NextRequest) {
         questId: questId,
         delta: BigInt(delta),
         nonce: BigInt(nonce),
-        deadline: BigInt(deadline),
+        deadline: usedDeadline,
       },
     });
 
-    return NextResponse.json({ signature });
+    // 👇 LA CORRECTION EST ICI : On renvoie la deadline au frontend !
+    return NextResponse.json({ signature, deadline: usedDeadline.toString() });
 
   } catch (error: any) {
     console.error("Error signing:", error);

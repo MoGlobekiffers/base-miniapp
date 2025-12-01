@@ -6,18 +6,20 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
-import { useBrain, addBrain } from "../brain";
+import { useBrain, addBrain } from "../brain"; // Import addBrain remis
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// Design de la roue (Ajustement CSS pour recentrer)
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 12 * 3600;
+
+// 👇 COOLDOWN DESACTIVÉ POUR VOS TESTS
+const COOLDOWN_SEC = 0; 
+
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
@@ -50,7 +52,6 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// ABI : On utilise 'nonces' pour lire le compteur
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -94,7 +95,6 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Lecture du nonce : On prend celui du contrat
 async function getNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
   const nonce = await publicClient.readContract({
@@ -103,8 +103,6 @@ async function getNonce(player: string) {
     functionName: "nonces",
     args: [player as `0x${string}`],
   }) as bigint;
-  
-  // Le contrat check r.nonce == nonces[player], donc on envoie le nonce actuel
   return Number(nonce); 
 }
 
@@ -117,6 +115,9 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
+  
+  // 👇 C'EST ICI LA CORRECTION : On renvoie data.deadline (qui vient de l'API)
+  // Si l'API renvoie undefined, on crashait. Maintenant l'API renvoie une string.
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -128,7 +129,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
       questId: questId,
       delta: BigInt(delta),
       nonce: BigInt(nonce),
-      deadline: BigInt(deadline)
+      deadline: BigInt(deadline) // Ici ça ne plantera plus car deadline est défini
   };
 
   return await walletClient.writeContract({
@@ -174,8 +175,7 @@ export default function WheelClientPage() {
   const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => {
     const a0 = i * anglePerSegment;
     const a1 = (i + 1) * anglePerSegment;
-    const mid = a0 + anglePerSegment / 2;
-    return { i, a0, a1, mid, color: COLORS[i % COLORS.length], label: QUESTS[i] };
+    return { i, a0, a1, color: COLORS[i % COLORS.length], label: QUESTS[i] };
   }), [anglePerSegment]);
 
   useEffect(() => {
@@ -207,7 +207,6 @@ export default function WheelClientPage() {
       if (q === "Base Speed Quiz") setActiveQuiz(getRandomBaseQuiz());
       else if (q === "Farcaster Flash Quiz") setActiveQuiz(getRandomFarcasterQuiz());
       else if (q === "Mini app quiz") setActiveQuiz(getRandomMiniAppQuiz());
-      else setActiveQuiz(null);
       
       if (address && !DEV_MODE && !COMING_SOON_QUESTS.includes(q) && q !== "Bonus spin") {
           localStorage.setItem(`dw:lastSpin:${address.toLowerCase()}`, String(Date.now()));
@@ -250,7 +249,7 @@ export default function WheelClientPage() {
           <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-6 max-w-sm w-full shadow-lg">
             <div className="text-blue-400 text-xs font-bold uppercase text-center mb-2">Quiz Challenge</div>
             <h3 className="text-xl font-black text-white mb-8 text-center leading-snug">{activeQuiz.question}</h3>
-            <div className="flex flex-col gap-3">{activeQuiz.choices.map((c, i) => <button key={i} onClick={() => handleAnswer(i)} className="w-full py-4 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 hover:border-blue-400 rounded-xl text-left text-sm font-bold text-slate-200 transition-all active:scale-95 shadow-lg">{c}</button>)}</div>
+            <div className="flex flex-col gap-3">{activeQuiz.choices.map((c, i) => <button key={i} onClick={() => handleAnswer(i)} className="w-full py-4 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 rounded-xl text-left text-sm font-bold text-slate-200 transition-all active:scale-95 shadow-lg">{c}</button>)}</div>
           </div>
         </div>
       )}
@@ -280,13 +279,14 @@ export default function WheelClientPage() {
             ) : (
               <button disabled={!address || claimed || !walletClient || (isSocial && proofLink.length < 10)} onClick={async () => {
                   if (!address || !result || !walletClient) return;
-                  // ... (Vérif NFT inchangée) ...
+                  if (result === "Mint My Nft") {
+                    try { const balance = await createPublicClient({chain:base,transport:http(process.env.NEXT_PUBLIC_RPC_URL)}).readContract({address:NFT_CONTRACT_ADDRESS as `0x${string}`,abi:[{inputs:[{name:"owner",type:"address"}],name:"balanceOf",outputs:[{type:"uint256"}],stateMutability:"view",type:"function"}],functionName:'balanceOf',args:[address]}) as bigint; if(Number(balance)===0){alert("No NFT found!"); setHasClickedMint(false); return;} } catch{alert("Error checking NFT"); return;}
+                  }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 ON RECUPERE LA DEADLINE DU SERVEUR
+                    // 👇 RÉCUPÉRATION DE DEADLINE DEPUIS L'API
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ON L'ENVOIE AU CONTRAT
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -296,9 +296,8 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (CORRIGÉE VISUELLEMENT) --- */}
+      {/* --- LA ROUE (POSITION CORRIGÉE) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE RECENTRÉE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
