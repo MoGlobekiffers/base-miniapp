@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { player, questId, delta, nonce, deadline } = body;
 
-    // 1. Clé Privée
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -23,24 +22,22 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
-    // 2. Vérification
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // 3. SIGNATURE EIP-712 (CORRIGÉE SELON VOTRE CONTRAT)
+    // 👇 LE COEUR DU SUCCÈS : Alignement parfait avec votre Solidity
     const domain = {
-      name: "DailyWheelBrain", // <--- LE VRAI NOM DU CONTRAT
+      name: "DailyWheelBrain", // <--- LE BON NOM
       version: "1",
       chainId: 8453, 
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
-    // La structure "Reward" exacte de votre contrat Solidity
     const types = {
-      Reward: [
+      Reward: [ // <--- LA STRUCTURE EXACTE DU CONTRAT
         { name: "player", type: "address" },
         { name: "questId", type: "string" },
-        { name: "delta", type: "int256" }, // On utilise int256 directement
+        { name: "delta", type: "int256" }, // int256 et pas uint256
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
@@ -53,7 +50,7 @@ export async function POST(req: NextRequest) {
       message: {
         player: player as `0x${string}`,
         questId: questId,
-        delta: BigInt(delta), // Peut être négatif, c'est géré
+        delta: BigInt(delta), // On passe directement la valeur (positive ou négative)
         nonce: BigInt(nonce),
         deadline: BigInt(deadline),
       },
