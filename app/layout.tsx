@@ -6,7 +6,7 @@ import OnchainKitProviderClient from "./OnchainKitProviderClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// 👇 VOTRE URL DE BASE
+// 👇 C'EST BIEN VOTRE URL
 const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
 export const metadata: Metadata = {
@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     siteName: "DailyWheel",
     images: [
       {
-        url: "/base-logo-in-blue.png", // On teste avec le LOGO pour être sûr (plus léger)
-        width: 400,
-        height: 400,
-        alt: "DailyWheel Logo",
+        url: "/preview-wheel.png", // ✅ La roue pour l'aperçu
+        width: 1200,
+        height: 630,
+        alt: "DailyWheel Preview",
       },
     ],
     locale: "en_US",
@@ -34,14 +34,15 @@ export const metadata: Metadata = {
   other: {
     "fc:frame": JSON.stringify({
       version: "next",
-      imageUrl: `${APP_URL}/base-logo-in-blue.png`, // Idem ici
+      imageUrl: `${APP_URL}/preview-wheel.png`, // ✅ La roue pour l'aperçu Farcaster
       button: {
         title: "Launch App 🚀",
         action: {
           type: "launch_frame",
           name: "DailyWheel",
           url: APP_URL,
-          splashImageUrl: `${APP_URL}/base-logo-in-blue.png`,
+          // 👇 La roue aussi pour le chargement
+          splashImageUrl: `${APP_URL}/preview-wheel.png`, 
           splashBackgroundColor: "#0f172a",
         },
       },
