@@ -23,11 +23,15 @@ import Leaderboard from "../components/Leaderboard";
 import BadgesPanel from "../components/BadgesPanel"; 
 
 /* =======================
- * Configuration NFT
+ * Configuration NFT & Mini Apps
  * ======================= */
 // 👇 VOS INFOS DE COLLECTION
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
+
+// 👇 LES 2 LIENS POUR LA ROTATION 12H
+const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
+const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
 /* =======================
  * Quests & appearance
@@ -162,7 +166,7 @@ export default function WheelClientPage() {
   const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(null);
   const [claimed, setClaimed] = useState(false);
   
-  // State pour suivre le clic sur le lien NFT
+  // State pour suivre le clic sur le lien NFT ou Mini App
   const [hasClickedMint, setHasClickedMint] = useState(false);
   
   useEffect(() => { setMounted(true); }, []);
@@ -200,7 +204,7 @@ export default function WheelClientPage() {
     setQuizResult(null); 
     setClaimed(false); 
     setResult(null);
-    setHasClickedMint(false); // Reset de l'étape NFT
+    setHasClickedMint(false); // Reset de l'étape NFT/Lien
 
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
@@ -294,13 +298,16 @@ export default function WheelClientPage() {
             
             <div className="flex w-full justify-between items-center mb-2">
                 <div className="text-sm font-bold text-emerald-400">
-                  {result === "Mint My Nft" ? "NFT Unlocked! 🎨" : "Quest Complete!"}
+                  {result === "Mint My Nft" ? "NFT Unlocked! 🎨" : 
+                   result === "Test a top mini app" ? "Discovery Time! 🔭" :
+                   "Quest Complete!"}
                 </div>
             </div>
 
-            {/* --- LOGIQUE DU BOUTON A 2 ETAPES --- */}
+            {/* --- LOGIQUE DES BOUTONS SPECIAUX (STEP 1) --- */}
+            
+            {/* CAS 1 : MINT NFT (Step 1) */}
             {result === "Mint My Nft" && !hasClickedMint ? (
-              // ETAPE 1 : ALLER SUR OPENSEA
               <a 
                 href={NFT_COLLECTION_LINK}
                 target="_blank" 
@@ -310,8 +317,22 @@ export default function WheelClientPage() {
               >
                 <span>🚀 Step 1: Mint NFT</span>
               </a>
+
+            // CAS 2 : TEST MINI APP (Step 1 - Rotation 12h)
+            ) : result === "Test a top mini app" && !hasClickedMint ? (
+              <a 
+                // 👇 Calcule le lien en fonction de l'heure (change toutes les 12h)
+                href={Math.floor(Date.now() / (12 * 60 * 60 * 1000)) % 2 === 0 ? MINI_APP_1 : MINI_APP_2}
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={() => setHasClickedMint(true)} 
+                className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-400 hover:to-orange-400 text-white font-bold rounded text-center shadow-lg transform transition-all hover:scale-105 uppercase tracking-widest cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>📱 Step 1: Open App</span>
+              </a>
+
+            // CAS 3 : CLAIM CLASSIQUE ou STEP 2
             ) : (
-              // ETAPE 2 : VERIFICATION ET CLAIM
               <button
                 disabled={!address || claimed || !walletClient}
                 onClick={async () => {
@@ -324,8 +345,6 @@ export default function WheelClientPage() {
                             chain: base, 
                             transport: http(process.env.NEXT_PUBLIC_RPC_URL) 
                         });
-
-                        // Vérification sur VOTRE contrat
                         const balance = await publicClient.readContract({
                             address: NFT_CONTRACT_ADDRESS as `0x${string}`,
                             abi: [{"inputs": [{"internalType": "address","name": "owner","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}],
@@ -335,7 +354,7 @@ export default function WheelClientPage() {
 
                         if (Number(balance) === 0) {
                             alert("⚠️ Vous ne possédez pas encore le NFT 'Pixel Brainiac' !\n\n1. Cliquez sur le lien pour Minter (Gratuit)\n2. Attendez 30 secondes\n3. Réessayez ici.");
-                            setHasClickedMint(false); // Retour à l'étape 1
+                            setHasClickedMint(false); 
                             return; 
                         }
                     } catch (error) {
@@ -371,7 +390,11 @@ export default function WheelClientPage() {
                       : "bg-emerald-500 text-white hover:bg-emerald-400"
                     }`}
               >
-                {claimed ? "Done ✅" : (result === "Mint My Nft" ? "Step 2: Verify & Claim 💰" : `Claim +${QUEST_POINTS[result] ?? 0}`)}
+                {claimed ? "Done ✅" : (
+                    result === "Mint My Nft" ? "Step 2: Verify & Claim 💰" : 
+                    result === "Test a top mini app" ? "Step 2: Claim Points 💰" :
+                    `Claim +${QUEST_POINTS[result] ?? 0}`
+                )}
               </button>
             )}
 
