@@ -31,8 +31,7 @@ const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
-// 👇 QUÊTES SOCIALES (Proof of Work)
-// J'ai retiré "Mystery Challenge" d'ici car elle passe en mode "Coming Soon"
+// 👇 QUÊTES SOCIALES (Proof of Work requis)
 const SOCIAL_QUESTS = [
   "Cast Party", 
   "Like Storm", 
@@ -44,11 +43,29 @@ const SOCIAL_QUESTS = [
   "Mini apps mashup"
 ];
 
-// 👇 NOUVEAU : LISTE DES QUÊTES "EN TRAVAUX" (Redonnent un tour gratuit)
+// 👇 QUÊTES "EN TRAVAUX"
 const COMING_SOON_QUESTS = [
   "Web3 Survivor",
   "Mystery Challenge"
 ];
+
+// 👇 NOUVEAU : INSTRUCTIONS DÉTAILLÉES PAR QUÊTE
+const QUEST_INSTRUCTIONS: Record<string, string> = {
+  "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
+  "Like Storm": "❤️ Go like15 recent cass from your feed.",
+  "Reply Sprint": "💬 Reply to 1 cast with something meaningful.",
+  "Invite & Share": "🔗 Share this frame or invite a friend to play.",
+  "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
+  "Meme Factory": "🐸 Create and cast a meme about Base or Farcaster.",
+  "Crazy promo": "📢 Check out the latest promo on /base channel.",
+  "Mini apps mashup": "📱 Use 1 other mini-app today and paste proof.",
+  "Daily check-in": "✅ Simply claim your daily reward point.",
+  "Bankruptcy": "📉 Ouch! Market crash. You lose points.",
+  "Double points": "✖️ Multiplier activated! (No points this turn).",
+  "Mint My Nft": "🎨 Unlock the exclusive Pixel Brainiac NFT on OpenSea.",
+  "Test a top mini app": "🔭 Discover a partner app to earn points.",
+  // Les Quiz n'ont pas besoin de texte ici car ils ont leur propre fenêtre
+};
 
 const QUESTS: string[] = [
   "Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party",
@@ -365,6 +382,15 @@ export default function WheelClientPage() {
                 </div>
             </div>
 
+            {/* 👇 NOUVEAU : DESCRIPTION DE LA QUÊTE */}
+            {result && QUEST_INSTRUCTIONS[result] && !claimed && !isComingSoon && (
+                <div className="mb-4 p-2 bg-slate-950/50 rounded border border-slate-700/50 text-center">
+                    <p className="text-xs text-slate-300 italic">
+                        {QUEST_INSTRUCTIONS[result]}
+                    </p>
+                </div>
+            )}
+
             {/* --- CHAMP INPUT POUR QUETES SOCIALES --- */}
             {isSocialQuest && !claimed && !isComingSoon && (
                 <div className="mb-3 w-full">
@@ -407,10 +433,8 @@ export default function WheelClientPage() {
               // BOUTON "COMING SOON" (Rejouer)
               <button
                 onClick={() => {
-                    // Reset manuel du cooldown et de l'état
                     setResult(null);
                     setCooldown(0);
-                    // On ne stocke rien en localStorage donc on peut rejouer direct
                 }}
                 className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg border border-slate-600 shadow-lg transform transition-all active:scale-95"
               >
