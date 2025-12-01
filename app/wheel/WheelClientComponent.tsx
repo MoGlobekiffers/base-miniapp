@@ -405,18 +405,19 @@ export default function WheelClientPage() {
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
 
-        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
-          <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
-            <defs>
-              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
-          </svg>
-        </div>
-
+{/* MODIFICATION ICI : top passe de -10 à -2 */}
+<div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -4 }}>
+  <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
+    <defs>
+      <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#22d3ee" />
+        <stop offset="100%" stopColor="#3b82f6" />
+      </linearGradient>
+    </defs>
+    {/* J'ai aussi ajouté un petit filtre drop-shadow pour qu'elle ressorte bien sur le bord */}
+    <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+  </svg>
+</div>
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
