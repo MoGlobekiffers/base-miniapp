@@ -23,7 +23,7 @@ import Leaderboard from "../components/Leaderboard";
 import BadgesPanel from "../components/BadgesPanel"; 
 
 /* =======================
- * Configuration NFT & Mini Apps
+ * Configuration & Constantes
  * ======================= */
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
@@ -31,9 +31,18 @@ const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
-/* =======================
- * Quests & appearance
- * ======================= */
+// 👇 LISTE DES QUÊTES QUI DEMANDENT UN LIEN DE PREUVE
+const SOCIAL_QUESTS = [
+  "Cast Party", 
+  "Like Storm", 
+  "Reply Sprint", 
+  "Invite & Share", 
+  "Creative #gm", 
+  "Meme Factory", 
+  "Crazy promo", 
+  "Mystery Challenge"
+];
+
 const QUESTS: string[] = [
   "Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party",
   "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app",
@@ -55,9 +64,6 @@ const SPIN_DURATION_MS = 4500;
 const COOLDOWN_SEC = 12 * 3600;
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 
-/* =======================
- * Brain points & Descriptions
- * ======================= */
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
   "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3,
@@ -134,7 +140,6 @@ export default function WheelClientPage() {
   useEffect(() => {
     const load = async () => { 
         await sdk.actions.ready(); 
-        try { await sdk.actions.expand(); } catch (e) {}
     };
     if (sdk && !isSDKLoaded) { setIsSDKLoaded(true); load(); }
   }, [isSDKLoaded]);
@@ -164,6 +169,9 @@ export default function WheelClientPage() {
   const [claimed, setClaimed] = useState(false);
   const [hasClickedMint, setHasClickedMint] = useState(false);
   
+  // 👇 NOUVEAU : State pour stocker le lien de preuve sociale
+  const [proofLink, setProofLink] = useState("");
+
   useEffect(() => { setMounted(true); }, []);
 
   const anglePerSegment = 360 / SEGMENTS;
@@ -198,7 +206,8 @@ export default function WheelClientPage() {
     setQuizResult(null); 
     setClaimed(false); 
     setResult(null);
-    setHasClickedMint(false); 
+    setHasClickedMint(false);
+    setProofLink(""); // Reset du champ texte
 
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
@@ -248,8 +257,10 @@ export default function WheelClientPage() {
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
-  // Logique d'affichage du claim : Si ce n'est PAS un quiz, OU si c'est un quiz et qu'on a gagné.
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
+  
+  // Est-ce une quête sociale qui nécessite un lien ?
+  const isSocialQuest = SOCIAL_QUESTS.includes(result || "");
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
@@ -286,7 +297,7 @@ export default function WheelClientPage() {
          <span>{cooldownLabel}</span>
       </div>
 
-      {/* --- 👇 LE BLOC QUI MANQUAIT : AFFICHAGE DU QUIZ --- */}
+      {/* QUIZ MODAL */}
       {activeQuiz && !quizResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in-95">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(59,130,246,0.3)]">
@@ -308,7 +319,7 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- 👇 AFFICHAGE SI MAUVAISE REPONSE --- */}
+      {/* RESULTAT QUIZ */}
       {quizResult === "wrong" && (
          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl">
@@ -325,7 +336,7 @@ export default function WheelClientPage() {
          </div>
       )}
 
-      {/* PANEL RECLAMATION (CLAIM) */}
+      {/* PANEL RECLAMATION */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -337,6 +348,20 @@ export default function WheelClientPage() {
                    "Quest Complete!"}
                 </div>
             </div>
+
+            {/* --- CHAMP INPUT POUR QUETES SOCIALES --- */}
+            {isSocialQuest && !claimed && (
+                <div className="mb-3 w-full">
+                    <label className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 block">Proof of Work</label>
+                    <input 
+                        type="text" 
+                        placeholder="Paste Warpcast link (http...)" 
+                        value={proofLink}
+                        onChange={(e) => setProofLink(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+            )}
 
             {/* --- LOGIQUE DES BOUTONS --- */}
             
@@ -364,11 +389,12 @@ export default function WheelClientPage() {
 
             ) : (
               <button
-                disabled={!address || claimed || !walletClient}
+                // 👇 CONDITION BLOQUANTE : Si Social Quest et lien trop court (<10 chars) -> Bouton désactivé
+                disabled={!address || claimed || !walletClient || (isSocialQuest && proofLink.length < 10)}
                 onClick={async () => {
                   if (!address || !result || !walletClient) return;
                   
-                  // Verification NFT
+                  // Verif NFT
                   if (result === "Mint My Nft") {
                     try {
                         const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
@@ -393,7 +419,9 @@ export default function WheelClientPage() {
                   try {
                     const delta = basePoints;
                     const nonce = await getPlayerNonce(address);
-                    const proof = isQuiz ? selectedChoice : null;
+                    // On envoie le lien de preuve (proofLink) si c'est une quête sociale, sinon le choix du quiz
+                    const proof = isQuiz ? selectedChoice : (isSocialQuest ? proofLink : null);
+                    
                     const { signature, deadline } = await signReward(address, result, delta, nonce, proof);
                     await sendClaim(walletClient, delta, nonce, deadline, signature, address);
                     addBrain(address, result, basePoints);
@@ -405,7 +433,7 @@ export default function WheelClientPage() {
                   }
                 }}
                 className={`w-full px-4 py-2 rounded text-xs font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95
-                    ${!address || claimed 
+                    ${!address || claimed || (isSocialQuest && proofLink.length < 10)
                       ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
                       : "bg-emerald-500 text-white hover:bg-emerald-400"
                     }`}
@@ -413,6 +441,7 @@ export default function WheelClientPage() {
                 {claimed ? "Done ✅" : (
                     result === "Mint My Nft" ? "Step 2: Verify & Claim 💰" : 
                     result === "Test a top mini app" ? "Step 2: Claim Points 💰" :
+                    isSocialQuest && proofLink.length < 10 ? "Paste Link to Claim 🔒" : 
                     `Claim +${QUEST_POINTS[result] ?? 0}`
                 )}
               </button>
@@ -422,9 +451,7 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -2 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -454,7 +481,6 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
-        {/* BOUTON SPIN */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
             <img src="/base-logo-in-blue.png" alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
@@ -465,7 +491,6 @@ export default function WheelClientPage() {
         </div>
       </div>
 
-      {/* --- SECTION BADGES COMPACTE --- */}
       <div className="w-full max-w-lg border-t border-slate-800/50 pt-4 px-4">
         <h2 className="text-sm font-bold mb-4 text-center text-slate-500 uppercase tracking-widest">
           Your Trophy Room
@@ -477,7 +502,6 @@ export default function WheelClientPage() {
         )}
       </div>
 
-      {/* LEADERBOARD */}
       <div className="w-full max-w-lg pb-10">
          <Leaderboard />
       </div>
