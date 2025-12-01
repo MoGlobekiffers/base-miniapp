@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     
     // Configuration du "Domaine" (L'en-tête du formulaire)
     const domain = {
-      name: "BrainScore", // Nom probable du contrat (essayez BrainScoreSigned si ça rate)
+      name: "BrainScoreSigned", // Nom probable du contrat (essayez BrainScoreSigned si ça rate)
       version: "1",
       chainId: 8453, // Base Mainnet
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
