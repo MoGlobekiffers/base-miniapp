@@ -6,18 +6,26 @@ import OnchainKitProviderClient from "./OnchainKitProviderClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// 👇 VOTRE URL VERCEL (C'est celle-ci qui compte !)
-const APP_URL = "https://base-miniapp-gamma.vercel.app"; 
+// 👇 VOTRE URL EXACTE
+const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
 export const metadata: Metadata = {
+  // 👇 CETTE LIGNE EST CRUCIALE POUR CORRIGER L'IMAGE
+  metadataBase: new URL(APP_URL),
+  
   title: "DailyWheel",
   description: "Spin a daily quest wheel for Farcaster / Base mini app",
-  
-  // 👇 C'est ce bloc qui manque pour que l'image s'affiche sur Farcaster
   openGraph: {
     title: "DailyWheel",
     description: "Spin daily to earn Brain Points and badges.",
-    images: [`${APP_URL}/preview-wheel.png`], 
+    images: [
+      {
+        url: "/preview-wheel.png", // Next.js va le transformer en lien absolu grâce à metadataBase
+        width: 1200,
+        height: 630,
+        alt: "DailyWheel Preview",
+      },
+    ],
   },
   other: {
     "fc:frame": JSON.stringify({
