@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createWalletClient, http, toHex, keccak256, encodePacked } from "viem";
+kimport { NextRequest, NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
 
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
@@ -15,53 +13,62 @@ const QUEST_POINTS: Record<string, number> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { player, questId, delta, nonce, deadline, proof } = body;
+    const { player, questId, delta, nonce, deadline } = body;
 
-    // --- RECUPERATION CLE ---
+    // --- 1. VERIFICATION DE LA CLE ---
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
     let cleanKey = rawKey.trim().replace(/"/g, '');
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
-    
-    const privateKey = cleanKey as `0x${string}`;
-    const account = privateKeyToAccount(privateKey);
+    const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
-    // --- VERIFICATIONS ---
+    // --- 2. VERIFICATION DES POINTS ---
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // --- PREPARATION DONNEES ---
-    const absAmount = BigInt(Math.abs(delta));
-    const isNegative = delta < 0;
+    // --- 3. SIGNATURE EIP-712 (C'est ici que ça change !) ---
     
-    // 👇 ASTUCE TECHNIQUE : On convertit le Bool en Uint8 (0 ou 1) manuellement
-    // Cela évite les bugs d'encodage entre JS et Solidity
-    const negativeAsByte = isNegative ? 1 : 0; 
+    // Configuration du "Domaine" (L'en-tête du formulaire)
+    const domain = {
+      name: "BrainScore", // Nom probable du contrat (essayez BrainScoreSigned si ça rate)
+      version: "1",
+      chainId: 8453, // Base Mainnet
+      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+    } as const;
 
-    // Hachage avec uint8 au lieu de bool
-    const messageHash = keccak256(
-      encodePacked(
-        // On change "bool" par "uint8" pour être sûr du format (1 byte)
-        ["address", "uint256", "uint8", "uint256", "uint256"], 
-        [
-            player as `0x${string}`, 
-            absAmount, 
-            negativeAsByte, // On envoie 0 ou 1
-            BigInt(nonce), 
-            BigInt(deadline)
-        ]
-      )
-    );
+    // Configuration des "Types" (Les champs du formulaire)
+    const types = {
+      Claim: [
+        { name: "player", type: "address" },
+        { name: "amount", type: "uint256" },
+        { name: "isNegative", type: "bool" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint256" },
+      ],
+    } as const;
 
-    const signature = await account.signMessage({
-        message: { raw: messageHash }
+    const isNegative = delta < 0;
+    const absAmount = BigInt(Math.abs(delta));
+
+    // Signature structurée
+    const signature = await account.signTypedData({
+      domain,
+      types,
+      primaryType: "Claim",
+      message: {
+        player: player as `0x${string}`,
+        amount: absAmount,
+        isNegative: isNegative,
+        nonce: BigInt(nonce),
+        deadline: BigInt(deadline),
+      },
     });
 
     return NextResponse.json({ signature });
 
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("Error signing:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
