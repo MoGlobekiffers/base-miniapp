@@ -10,11 +10,15 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
+// 👇 ADRESSE TROUVÉE SUR VOTRE CAPTURE D'ERREUR (Celle qui est appelée par le front)
+const HARDCODED_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { player, questId, delta, nonce } = body; // On ignore la deadline entrante
+    const { player, questId, delta, nonce } = body; 
 
+    // 1. Vérification Clé
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -22,14 +26,19 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
+    // 2. Vérification Points
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
+    // 3. Signature EIP-712
+    // On utilise la date serveur pour la deadline (1h de validité)
+    const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
     const domain = {
-      name: "DailyWheelBrain", 
+      name: "DailyWheelBrain", // Validé par votre capture Solidity
       version: "1",
       chainId: 8453, 
-      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+      verifyingContract: HARDCODED_CONTRACT as `0x${string}`, // On force l'adresse ici
     } as const;
 
     const types = {
@@ -41,9 +50,6 @@ export async function POST(req: NextRequest) {
         { name: "deadline", type: "uint256" },
       ],
     } as const;
-
-    // Calcul Deadline : Maintenant + 1h (3600s)
-    const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
       domain,
@@ -58,7 +64,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 👇 IMPORTANT : On renvoie la deadline au client pour qu'il l'utilise
+    // On renvoie signature ET deadline (pour corriger l'erreur BigInt)
     return NextResponse.json({ signature, deadline: validDeadline.toString() });
 
   } catch (error: any) {
@@ -66,4 +72,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

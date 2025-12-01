@@ -6,20 +6,24 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
-import { useBrain, addBrain } from "../brain"; 
+import { useBrain, addBrain } from "../brain";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 1. CONSTANTES
+// ------------------------------------------------------------------
+// 1. CONFIGURATION
+// ------------------------------------------------------------------
+
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Cooldown 0 pour vos tests
+const COOLDOWN_SEC = 0; // Cooldown désactivé pour vos tests
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
+
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
@@ -50,7 +54,10 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// 2. ABI & HELPERS
+// ------------------------------------------------------------------
+// 2. LOGIQUE BLOCKCHAIN
+// ------------------------------------------------------------------
+
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -106,6 +113,7 @@ async function getNonce(player: string) {
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
+  // On laisse l'API décider de la deadline pour éviter les erreurs
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -113,6 +121,8 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
+  
+  // On récupère la deadline de l'API
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -136,7 +146,10 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
-// 3. COMPOSANT
+// ------------------------------------------------------------------
+// 3. COMPOSANT VISUEL
+// ------------------------------------------------------------------
+
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const { address } = useAccount();
@@ -168,7 +181,12 @@ export default function WheelClientPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const anglePerSegment = 360 / SEGMENTS;
-  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => ({ i, a0: i * anglePerSegment, a1: (i + 1) * anglePerSegment, color: COLORS[i % COLORS.length], label: QUESTS[i] })), [anglePerSegment]);
+  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => {
+    const a0 = i * anglePerSegment;
+    const a1 = (i + 1) * anglePerSegment;
+    const mid = a0 + anglePerSegment / 2;
+    return { i, a0, a1, mid, color: COLORS[i % COLORS.length], label: QUESTS[i] };
+  }), [anglePerSegment]);
 
   useEffect(() => {
     if (!address || DEV_MODE) { setCooldown(0); return; }
@@ -229,6 +247,8 @@ export default function WheelClientPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
+      
+      {/* HEADER */}
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
         {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0,6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <ConnectWallet className="!h-8 !px-3 !text-xs" />}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
@@ -237,6 +257,7 @@ export default function WheelClientPage() {
       <div className="mt-4 mb-2 text-center"><h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">DailyWheel</h1></div>
       <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono text-[10px] text-slate-500">{DEV_MODE && address && <button onClick={() => {localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0);}} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}<span>{cooldownLabel}</span></div>
 
+      {/* QUIZ MODAL */}
       {activeQuiz && !quizResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95">
           <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-6 max-w-sm w-full shadow-lg">
@@ -247,12 +268,14 @@ export default function WheelClientPage() {
         </div>
       )}
 
+      {/* WRONG ANSWER MODAL */}
       {quizResult === "wrong" && (
          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center"><div className="text-4xl mb-4">❌</div><h3 className="text-xl font-bold text-red-400 mb-2">Wrong!</h3><button onClick={() => {setQuizResult(null); setResult(null);}} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">Close</button></div>
          </div>
       )}
 
+      {/* CLAIM PANEL */}
       {showClaim && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -278,9 +301,7 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 RÉCUPÉRATION DE DEADLINE
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ENVOI AU CONTRAT
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -290,9 +311,8 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (SVG CORRIGÉ : transformBox 'fill-box') --- */}
+      {/* --- LA ROUE (SVG ORIGINAL RESTAURÉ) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -305,12 +325,10 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
-        {/* CERCLE ROUE - AJOUT DE transformBox: "fill-box" */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* 👇 C'EST ICI : transformBox: "fill-box" */}
-          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
+          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
             ))}
