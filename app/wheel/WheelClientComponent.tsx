@@ -12,6 +12,7 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
+// Design de la roue (Ajustement CSS pour recentrer)
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
@@ -49,6 +50,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
+// ABI : On utilise 'nonces' pour lire le compteur
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -92,32 +94,36 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
+// Lecture du nonce : On prend celui du contrat
 async function getNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
+  
   const nonce = await publicClient.readContract({
     address: BRAIN_CONTRACT,
     abi: CORRECT_ABI,
     functionName: "nonces",
     args: [player as `0x${string}`],
   }) as bigint;
+  
+  // Le contrat check r.nonce == nonces[player], donc on envoie le nonce actuel
   return Number(nonce); 
 }
 
-// Fonction signature mise à jour (reçoit deadline du serveur)
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
-  // On n'envoie plus de deadline, le serveur décide
+  const deadline = Math.floor(Date.now() / 1000) + 300; 
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player, questId, delta, nonce }),
+    body: JSON.stringify({ player, questId, delta, nonce, deadline }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  return { signature: data.signature, deadline: data.deadline }; // On récupère la deadline du serveur
+  return { signature: data.signature, deadline };
 }
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
+  
   const rewardStruct = {
       player: player as `0x${string}`,
       questId: questId,
@@ -125,6 +131,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
       nonce: BigInt(nonce),
       deadline: BigInt(deadline)
   };
+
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
@@ -210,7 +217,7 @@ export default function WheelClientPage() {
     setQuizResult(isCorrect ? "correct" : "wrong");
   };
 
-  const setSelectedChoice = (val: any) => { /* Placeholder */ };
+  const setSelectedChoice = (val: any) => {};
 
   const cooldownLabel = useMemo(() => {
     if (!address) return "Connect wallet"; if (cooldown <= 0) return "Ready!";
@@ -275,9 +282,7 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 ON RECUPERE LA DEADLINE DU SERVEUR
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ON L'ENVOIE AU CONTRAT
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -287,42 +292,24 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (CORRIGÉE VISUELLEMENT) --- */}
+      {/* ROUE RECENTRÉE VISUELLEMENT */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE RECENTRÉE */}
-        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
+        {/* Flèche légèrement descendue pour mordre sur la roue */}
+        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -5 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
-            <defs>
-              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+            <path d="M25 40 L10 10 H40 Z" fill="#3b82f6" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
           </svg>
         </div>
 
-        {/* ROUE SANS DÉCALAGE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
-          <circle r={R_OUT + 12} fill="#0f172a" />
-          <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
-            {segments.map((s) => (
-              <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
-            ))}
-            {segments.map((s) => (
-              <g key={`l-${s.i}`} transform={`rotate(${s.a0 + anglePerSegment / 2}) translate(0, -${(R_OUT + R_IN) / 2}) rotate(90)`}>
-                <text textAnchor="middle" dominantBaseline="middle" fill="#2e1065" fontSize="13" fontWeight={900}>{s.label}</text>
-              </g>
-            ))}
-          </g>
+          <circle r={R_OUT+12} fill="#0f172a"/><circle r={R_OUT+8} fill="none" stroke="#1e293b" strokeWidth={4}/>
+          <g style={{transform:`rotate(${rotation}deg)`,transformOrigin:"center",transition:`transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)`}}>{segments.map((s)=><path key={`w-${s.i}`} d={wedgePath(R_OUT,R_IN,s.a0,s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2}/>)}{segments.map((s)=><g key={`l-${s.i}`} transform={`rotate(${s.a0+anglePerSegment/2}) translate(0, -${(R_OUT+R_IN)/2}) rotate(90)`}><text textAnchor="middle" dominantBaseline="middle" fill="#2e1065" fontSize="13" fontWeight={900}>{s.label}</text></g>)}</g>
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* BOUTON SPIN RECENTRÉ */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
-            <img src="/base-logo-in-blue.png" className="absolute inset-0 w-full h-full object-cover" />
+          <button onClick={handleSpin} disabled={!(!spinning&&(!cooldown||DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning&&(!cooldown||DEV_MODE))?"opacity-50":""}`}>
+            <img src="/base-logo-in-blue.png" className="absolute inset-0 w-full h-full object-cover"/>
             <span className="relative z-10 text-2xl font-black text-white">SPIN</span>
           </button>
         </div>
