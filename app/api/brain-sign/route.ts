@@ -17,42 +17,40 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { player, questId, delta, nonce, deadline, proof } = body;
 
-    // --- ZONE DE VERIFICATION DE LA CLE ---
-    let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY;
-    if (!rawKey) rawKey = process.env.SIGNER_PRIVATE_KEY;
+    // --- RECUPERATION CLE ---
+    let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
+    if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
-    if (!rawKey) {
-      console.error("❌ CRITICAL: No Private Key found in Env Vars");
-      return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
-    }
-
-    // Nettoyage clé
     let cleanKey = rawKey.trim().replace(/"/g, '');
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     
     const privateKey = cleanKey as `0x${string}`;
     const account = privateKeyToAccount(privateKey);
 
-    // 👇 LE MOUCHARD : Regardez les logs Vercel pour voir ces lignes !
-    console.log("==========================================");
-    console.log("👮‍♂️ SERVER SIGNING REPORT:");
-    console.log("🔑 Signer Address (Vercel):", account.address); 
-    console.log("👤 Player Address:", player);
-    console.log("🔢 Nonce Signed:", nonce);
-    console.log("💰 Amount:", BigInt(Math.abs(delta)).toString());
-    console.log("==========================================");
-    // ----------------------------------------
-
+    // --- VERIFICATIONS ---
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
+    // --- PREPARATION DONNEES ---
     const absAmount = BigInt(Math.abs(delta));
     const isNegative = delta < 0;
+    
+    // 👇 ASTUCE TECHNIQUE : On convertit le Bool en Uint8 (0 ou 1) manuellement
+    // Cela évite les bugs d'encodage entre JS et Solidity
+    const negativeAsByte = isNegative ? 1 : 0; 
 
+    // Hachage avec uint8 au lieu de bool
     const messageHash = keccak256(
       encodePacked(
-        ["address", "uint256", "uint8", "uint256", "uint256"],
-        [player as `0x${string}`, absAmount, isNegative ? 1 : 0, BigInt(nonce), BigInt(deadline)]
+        // On change "bool" par "uint8" pour être sûr du format (1 byte)
+        ["address", "uint256", "uint8", "uint256", "uint256"], 
+        [
+            player as `0x${string}`, 
+            absAmount, 
+            negativeAsByte, // On envoie 0 ou 1
+            BigInt(nonce), 
+            BigInt(deadline)
+        ]
       )
     );
 
