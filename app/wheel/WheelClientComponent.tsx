@@ -6,13 +6,50 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
-import { useBrain, addBrain } from "../brain";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 👇 L'ABI EXACTE DE VOTRE CONTRAT (Extraite de votre fichier Solidity)
+// --- CONSTANTES GLOBALES (DOIVENT ÊTRE EN HAUT) ---
+const R_OUT = 260;
+const R_IN = 78;
+const POINTER_ANGLE = 0;
+const SPIN_DURATION_MS = 4500;
+const COOLDOWN_SEC = 12 * 3600;
+const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
+
+const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
+const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
+const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
+const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
+const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
+
+const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
+const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
+
+const QUEST_INSTRUCTIONS: Record<string, string> = {
+  "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
+  "Like Storm": "❤️ Go like 1 recent cast from your feed.", 
+  "Reply Sprint": "💬 Reply to 1 cast with something meaningful.", 
+  "Invite & Share": "🔗 Share this frame or invite a friend to play.",
+  "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
+  "Meme Factory": "🐸 Create and cast a meme about Base or Farcaster.",
+  "Crazy promo": "📢 Check out the latest promo on /base channel.",
+  "Mini apps mashup": "📱 Use 1 other mini-app today and paste proof.", 
+  "Daily check-in": "✅ Simply claim your daily reward point.",
+  "Bankruptcy": "📉 Ouch! Market crash. You lose points.",
+  "Double points": "✖️ Multiplier activated! (No points this turn).",
+  "Mint My Nft": "🎨 Unlock the exclusive Pixel Brainiac NFT on OpenSea.",
+  "Test a top mini app": "🔭 Discover a partner app to earn points.",
+};
+
+const QUESTS = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app", "Bonus spin", "Meme Factory", "Mint My Nft", "Mini apps mashup", "Crazy promo", "Bankruptcy", "Creative #gm", "Daily check-in", "Mystery Challenge", "Bonus spin", "Double points", "Web3 Survivor"];
+const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5, "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3, "Test a top mini app": 3, "Bonus spin": 1, "Meme Factory": 4, "Mint My Nft": 3, "Mini apps mashup": 4, "Crazy promo": 4, "Bankruptcy": -10, "Creative #gm": 3, "Daily check-in": 2, "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8 };
+const SEGMENTS = QUESTS.length;
+const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
+
+// ABI Correcte
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -43,45 +80,13 @@ const CORRECT_ABI = [
   }
 ] as const;
 
-const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
-const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
-const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
-const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
-const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
-
-const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
-const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
-
-const QUEST_INSTRUCTIONS: Record<string, string> = {
-  "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
-  "Like Storm": "❤️ Go like 1 recent cast from your feed.", 
-  "Reply Sprint": "💬 Reply to 1 cast with something meaningful.", 
-  "Invite & Share": "🔗 Share this frame or invite a friend to play.",
-  "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
-  "Meme Factory": "🐸 Create and cast a meme about Base or Farcaster.",
-  "Crazy promo": "📢 Check out the latest promo on /base channel.",
-  "Mini apps mashup": "📱 Use 1 other mini-app today and paste proof.", 
-  "Daily check-in": "✅ Simply claim your daily reward point.",
-  "Bankruptcy": "📉 Ouch! Market crash. You lose points.",
-  "Double points": "✖️ Multiplier activated! (No points this turn).",
-  "Mint My Nft": "🎨 Unlock the exclusive Pixel Brainiac NFT on OpenSea.",
-  "Test a top mini app": "🔭 Discover a partner app to earn points.",
-};
-
-const QUESTS = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app", "Bonus spin", "Meme Factory", "Mint My Nft", "Mini apps mashup", "Crazy promo", "Bankruptcy", "Creative #gm", "Daily check-in", "Mystery Challenge", "Bonus spin", "Double points", "Web3 Survivor"];
-const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5, "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3, "Test a top mini app": 3, "Bonus spin": 1, "Meme Factory": 4, "Mint My Nft": 3, "Mini apps mashup": 4, "Crazy promo": 4, "Bankruptcy": -10, "Creative #gm": 3, "Daily check-in": 2, "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8 };
-
-const POINTER_ANGLE = 0; const SPIN_DURATION_MS = 4500; const COOLDOWN_SEC = 12 * 3600; const SEGMENTS = QUESTS.length;
-const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
-const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
-
 function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   const largeArc = a1 - a0 <= 180 ? 0 : 1;
   const rad = (d: number) => (d * Math.PI) / 180;
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Récupération du nonce : On prend juste un timestamp pour être unique, car le contrat utilise usedDigest pour vérifier
+// Récupération du nonce : On prend juste un timestamp pour être unique
 async function getNonce() { return Date.now(); }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
@@ -96,11 +101,8 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   return { signature: data.signature, deadline };
 }
 
-// Fonction CLAIM mise à jour pour le nouveau contrat
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
-  
-  // On construit la structure Reward exactement comme le contrat l'attend
   const rewardStruct = {
       player: player as `0x${string}`,
       questId: questId,
@@ -108,13 +110,12 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
       nonce: BigInt(nonce),
       deadline: BigInt(deadline)
   };
-
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
-    abi: CORRECT_ABI, // On utilise la bonne ABI
+    abi: CORRECT_ABI,
     functionName: "claim",
-    args: [rewardStruct, signature], // On passe la struct et la signature
+    args: [rewardStruct, signature],
   });
 }
 
