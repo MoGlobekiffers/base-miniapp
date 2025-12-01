@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
 
     const messageHash = keccak256(
       encodePacked(
-        ["address", "uint256", "bool", "uint256", "uint256"],
-        [player as `0x${string}`, absAmount, isNegative, BigInt(nonce), BigInt(deadline)]
+        ["address", "uint256", "uint8", "uint256", "uint256"],
+        [player as `0x${string}`, absAmount, isNegative ? 1 : 0, BigInt(nonce), BigInt(deadline)]
       )
     );
 
