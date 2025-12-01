@@ -108,7 +108,7 @@ export const BADGES: Badge[] = [
     id: 30, // J'ai mis 30 pour laisser de la place aux autres catégories
     name: "Pixel Holder",
     description: "Own the exclusive Pixel Brainiac NFT.",
-    image: "/nft-badge.png", // Assurez-vous que l'image est bien dans public/
+    image: "/badges/nft-badge.png", // Assurez-vous que l'image est bien dans public/
     category: "NFT",
     minScore: 0,
   },
