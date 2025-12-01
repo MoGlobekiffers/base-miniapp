@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
 
-// ... (Gardez votre constante QUEST_POINTS ici) ...
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
   "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3,
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { player, questId, delta, nonce, deadline } = body;
 
-    // 1. Récupérer la Clé Privée
+    // 1. Clé Privée
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -24,42 +23,37 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
-    // 2. Valider la Requête
+    // 2. Vérification
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // 3. Construire la Signature EIP-712
-    // Cela DOIT correspondre au constructeur de votre contrat EIP712.
-    // Basé sur le nom de fichier 'BrainScoreSigned.sol', le nom est probablement 'BrainScoreSigned'.
+    // 3. SIGNATURE EIP-712 (CORRIGÉE SELON VOTRE CONTRAT)
     const domain = {
-      name: "BrainScoreSigned", 
+      name: "DailyWheelBrain", // <--- LE VRAI NOM DU CONTRAT
       version: "1",
-      chainId: 8453, // ID de la chaîne Base Mainnet
+      chainId: 8453, 
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
+    // La structure "Reward" exacte de votre contrat Solidity
     const types = {
-      Claim: [
+      Reward: [
         { name: "player", type: "address" },
-        { name: "amount", type: "uint256" },
-        { name: "isNegative", type: "bool" },
+        { name: "questId", type: "string" },
+        { name: "delta", type: "int256" }, // On utilise int256 directement
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
     } as const;
 
-    const isNegative = delta < 0;
-    const absAmount = BigInt(Math.abs(delta));
-
-    // Signer en utilisant signTypedData (La correction !)
     const signature = await account.signTypedData({
       domain,
       types,
-      primaryType: "Claim",
+      primaryType: "Reward",
       message: {
         player: player as `0x${string}`,
-        amount: absAmount,
-        isNegative: isNegative,
+        questId: questId,
+        delta: BigInt(delta), // Peut être négatif, c'est géré
         nonce: BigInt(nonce),
         deadline: BigInt(deadline),
       },
