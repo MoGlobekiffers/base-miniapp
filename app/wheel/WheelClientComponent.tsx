@@ -139,7 +139,7 @@ async function getPlayerNonce(player: string) {
         functionName: "getPlayer",
         args: [player],
       })) as readonly [bigint, bigint];
-      return Number(quests) + 1;
+      return Number(quests) ;
   }
 }
 
