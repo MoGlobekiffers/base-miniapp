@@ -12,11 +12,6 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// ------------------------------------------------------------------
-// 1. CONSTANTES & CONFIGURATION
-// ------------------------------------------------------------------
-
-// Design de la roue
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
@@ -24,14 +19,12 @@ const SPIN_DURATION_MS = 4500;
 const COOLDOWN_SEC = 12 * 3600;
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 
-// Blockchain & Liens
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
-// Listes de Quêtes
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
 const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
 
@@ -56,11 +49,6 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// ------------------------------------------------------------------
-// 2. ABI & HELPER FUNCTIONS
-// ------------------------------------------------------------------
-
-// ABI Correcte incluant 'nonces' et 'claim' avec struct
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -104,37 +92,32 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Récupération du VRAI nonce sur la blockchain
 async function getNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  
   const nonce = await publicClient.readContract({
     address: BRAIN_CONTRACT,
     abi: CORRECT_ABI,
     functionName: "nonces",
     args: [player as `0x${string}`],
   }) as bigint;
-  
-  // On renvoie le nonce tel quel (sans +1, car le contrat BrainScoreSigned check nonce == r.nonce)
   return Number(nonce); 
 }
 
+// Fonction signature mise à jour (reçoit deadline du serveur)
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
-  const deadline = Math.floor(Date.now() / 1000) + 300; 
+  // On n'envoie plus de deadline, le serveur décide
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player, questId, delta, nonce, deadline }),
+    body: JSON.stringify({ player, questId, delta, nonce }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  return { signature: data.signature, deadline };
+  return { signature: data.signature, deadline: data.deadline }; // On récupère la deadline du serveur
 }
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
-  
-  // Structure Reward EIP-712
   const rewardStruct = {
       player: player as `0x${string}`,
       questId: questId,
@@ -142,7 +125,6 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
       nonce: BigInt(nonce),
       deadline: BigInt(deadline)
   };
-
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
@@ -151,10 +133,6 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
     args: [rewardStruct, signature],
   });
 }
-
-// ------------------------------------------------------------------
-// 3. COMPOSANT PRINCIPAL
-// ------------------------------------------------------------------
 
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
@@ -232,8 +210,7 @@ export default function WheelClientPage() {
     setQuizResult(isCorrect ? "correct" : "wrong");
   };
 
-  // Helper pour simuler le setSelectedChoice qui manquait
-  const setSelectedChoice = (val: any) => { /* Placeholder si non utilisé ailleurs */ };
+  const setSelectedChoice = (val: any) => { /* Placeholder */ };
 
   const cooldownLabel = useMemo(() => {
     if (!address) return "Connect wallet"; if (cooldown <= 0) return "Ready!";
@@ -249,8 +226,6 @@ export default function WheelClientPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
-      
-      {/* HEADER */}
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
         {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0,6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <ConnectWallet className="!h-8 !px-3 !text-xs" />}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
@@ -259,25 +234,22 @@ export default function WheelClientPage() {
       <div className="mt-4 mb-2 text-center"><h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">DailyWheel</h1></div>
       <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono text-[10px] text-slate-500">{DEV_MODE && address && <button onClick={() => {localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0);}} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}<span>{cooldownLabel}</span></div>
 
-      {/* QUIZ MODAL */}
       {activeQuiz && !quizResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95">
           <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-6 max-w-sm w-full shadow-lg">
             <div className="text-blue-400 text-xs font-bold uppercase text-center mb-2">Quiz Challenge</div>
             <h3 className="text-xl font-black text-white mb-8 text-center leading-snug">{activeQuiz.question}</h3>
-            <div className="flex flex-col gap-3">{activeQuiz.choices.map((c, i) => <button key={i} onClick={() => {if(i===activeQuiz.correctIndex){setQuizResult("correct")}else{setQuizResult("wrong")}}} className="w-full py-4 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 hover:border-blue-400 rounded-xl text-left text-sm font-bold text-slate-200 transition-all active:scale-95 shadow-lg">{c}</button>)}</div>
+            <div className="flex flex-col gap-3">{activeQuiz.choices.map((c, i) => <button key={i} onClick={() => {if(i===activeQuiz.correctIndex){setQuizResult("correct")}else{setQuizResult("wrong")}}} className="w-full py-4 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 rounded-xl text-left text-sm font-bold text-slate-200">{c}</button>)}</div>
           </div>
         </div>
       )}
 
-      {/* WRONG ANSWER MODAL */}
       {quizResult === "wrong" && (
          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center"><div className="text-4xl mb-4">❌</div><h3 className="text-xl font-bold text-red-400 mb-2">Wrong!</h3><button onClick={() => {setQuizResult(null); setResult(null);}} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">Close</button></div>
          </div>
       )}
 
-      {/* CLAIM PANEL */}
       {showClaim && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -302,9 +274,10 @@ export default function WheelClientPage() {
                   }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
-                    // 👇 Utilisation de la fonction getNonce qui lit la blockchain
-                    const nonce = await getNonce(address); 
+                    const nonce = await getNonce(address);
+                    // 👇 ON RECUPERE LA DEADLINE DU SERVEUR
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
+                    // 👇 ON L'ENVOIE AU CONTRAT
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -314,9 +287,9 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* LA ROUE (SVG) */}
+      {/* --- LA ROUE (CORRIGÉE VISUELLEMENT) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE (Ajustée à -10 pour mordre un peu plus) */}
+        {/* FLÈCHE RECENTRÉE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -329,7 +302,7 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
-        {/* CERCLE ROUE */}
+        {/* ROUE SANS DÉCALAGE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
@@ -346,7 +319,7 @@ export default function WheelClientPage() {
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* BOUTON SPIN */}
+        {/* BOUTON SPIN RECENTRÉ */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
             <img src="/base-logo-in-blue.png" className="absolute inset-0 w-full h-full object-cover" />
@@ -355,10 +328,7 @@ export default function WheelClientPage() {
         </div>
       </div>
 
-      <div className="w-full max-w-lg border-t border-slate-800/50 pt-4 px-4">
-        <h2 className="text-sm font-bold mb-4 text-center text-slate-500 uppercase">Your Trophy Room</h2>
-        {address ? <BadgesPanel userAddress={address} currentScore={currentOnChainScore} /> : <p className="text-center text-xs text-slate-600">Connect wallet</p>}
-      </div>
+      <div className="w-full max-w-lg border-t border-slate-800/50 pt-4 px-4"><h2 className="text-sm font-bold mb-4 text-center text-slate-500 uppercase">Your Trophy Room</h2>{address ? <BadgesPanel userAddress={address} currentScore={currentOnChainScore} /> : <p className="text-center text-xs text-slate-600">Connect wallet</p>}</div>
       <div className="w-full max-w-lg pb-10"><Leaderboard /></div>
     </main>
   );
