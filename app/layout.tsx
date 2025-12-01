@@ -13,14 +13,13 @@ export const metadata: Metadata = {
   // 👇 CETTE LIGNE EST CRUCIALE POUR CORRIGER L'IMAGE
   metadataBase: new URL(APP_URL),
   
-  title: "DailyWheel",
-  description: "Spin a daily quest wheel for Farcaster / Base mini app",
-  openGraph: {
+openGraph: {
     title: "DailyWheel",
     description: "Spin daily to earn Brain Points and badges.",
     images: [
       {
-        url: "/preview-wheel.png", // Next.js va le transformer en lien absolu grâce à metadataBase
+        // 👇 ON FORCE LE LIEN COMPLET ICI
+        url: "https://base-miniapp-gamma.vercel.app/preview-wheel.png", 
         width: 1200,
         height: 630,
         alt: "DailyWheel Preview",
