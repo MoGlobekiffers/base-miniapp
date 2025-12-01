@@ -6,18 +6,18 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
-import { useBrain, addBrain } from "../brain";
+import { useBrain, addBrain } from "../brain"; 
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// --- CONFIGURATION ORIGINALE (Roue centrée) ---
+// 1. CONSTANTES
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Cooldown désactivé pour test
+const COOLDOWN_SEC = 0; // Cooldown 0 pour vos tests
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
@@ -50,8 +50,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// --- ABI & HELPERS ---
-
+// 2. ABI & HELPERS
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -107,7 +106,6 @@ async function getNonce(player: string) {
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
-  // On n'envoie pas de deadline, l'API la génère
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -115,7 +113,6 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  // 👇 ICI LE FIX : on récupère data.deadline
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -127,7 +124,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
       questId: questId,
       delta: BigInt(delta),
       nonce: BigInt(nonce),
-      deadline: BigInt(deadline) // Maintenant c'est défini !
+      deadline: BigInt(deadline)
   };
 
   return await walletClient.writeContract({
@@ -139,10 +136,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
-// ------------------------------------------------------------------
-// 4. COMPOSANT VISUEL (Roue restaurée)
-// ------------------------------------------------------------------
-
+// 3. COMPOSANT
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const { address } = useAccount();
@@ -174,11 +168,7 @@ export default function WheelClientPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const anglePerSegment = 360 / SEGMENTS;
-  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => {
-    const a0 = i * anglePerSegment;
-    const a1 = (i + 1) * anglePerSegment;
-    return { i, a0, a1, color: COLORS[i % COLORS.length], label: QUESTS[i] };
-  }), [anglePerSegment]);
+  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => ({ i, a0: i * anglePerSegment, a1: (i + 1) * anglePerSegment, color: COLORS[i % COLORS.length], label: QUESTS[i] })), [anglePerSegment]);
 
   useEffect(() => {
     if (!address || DEV_MODE) { setCooldown(0); return; }
@@ -288,9 +278,9 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 RÉCUPÉRATION DE DEADLINE DEPUIS L'API
+                    // 👇 RÉCUPÉRATION DE DEADLINE
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ON L'ENVOIE AU CONTRAT
+                    // 👇 ENVOI AU CONTRAT
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -300,8 +290,9 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (SVG RESTAURÉ : top -10, transformOrigin center) --- */}
+      {/* --- LA ROUE (SVG CORRIGÉ : transformBox 'fill-box') --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
+        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -314,10 +305,12 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
+        {/* CERCLE ROUE - AJOUT DE transformBox: "fill-box" */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
+          {/* 👇 C'EST ICI : transformBox: "fill-box" */}
+          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
             ))}

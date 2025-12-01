@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -14,7 +13,7 @@ const QUEST_POINTS: Record<string, number> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { player, questId, delta, nonce } = body;
+    const { player, questId, delta, nonce } = body; // On ignore la deadline entrante
 
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
@@ -26,7 +25,6 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // Le nom exact trouvé dans votre contrat
     const domain = {
       name: "DailyWheelBrain", 
       version: "1",
@@ -44,8 +42,8 @@ export async function POST(req: NextRequest) {
       ],
     } as const;
 
-    // Calcul de la deadline (1h)
-    const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600); 
+    // Calcul Deadline : Maintenant + 1h (3600s)
+    const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
       domain,
@@ -60,7 +58,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 👇 LA CORRECTION EST ICI : On renvoie la deadline au frontend !
+    // 👇 IMPORTANT : On renvoie la deadline au client pour qu'il l'utilise
     return NextResponse.json({ signature, deadline: validDeadline.toString() });
 
   } catch (error: any) {
@@ -68,3 +66,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
