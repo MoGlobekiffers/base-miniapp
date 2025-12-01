@@ -1,4 +1,4 @@
-kimport { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
 
 const QUEST_POINTS: Record<string, number> = {
