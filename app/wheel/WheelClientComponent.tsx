@@ -31,7 +31,8 @@ const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
-// 👇 LISTE DES QUÊTES QUI DEMANDENT UN LIEN DE PREUVE
+// 👇 QUÊTES SOCIALES (Proof of Work)
+// J'ai retiré "Mystery Challenge" d'ici car elle passe en mode "Coming Soon"
 const SOCIAL_QUESTS = [
   "Cast Party", 
   "Like Storm", 
@@ -39,7 +40,13 @@ const SOCIAL_QUESTS = [
   "Invite & Share", 
   "Creative #gm", 
   "Meme Factory", 
-  "Crazy promo", 
+  "Crazy promo",
+  "Mini apps mashup"
+];
+
+// 👇 NOUVEAU : LISTE DES QUÊTES "EN TRAVAUX" (Redonnent un tour gratuit)
+const COMING_SOON_QUESTS = [
+  "Web3 Survivor",
   "Mystery Challenge"
 ];
 
@@ -140,6 +147,7 @@ export default function WheelClientPage() {
   useEffect(() => {
     const load = async () => { 
         await sdk.actions.ready(); 
+        // Pas de expand() pour éviter l'erreur de build
     };
     if (sdk && !isSDKLoaded) { setIsSDKLoaded(true); load(); }
   }, [isSDKLoaded]);
@@ -169,7 +177,7 @@ export default function WheelClientPage() {
   const [claimed, setClaimed] = useState(false);
   const [hasClickedMint, setHasClickedMint] = useState(false);
   
-  // 👇 NOUVEAU : State pour stocker le lien de preuve sociale
+  // State pour stocker le lien de preuve sociale
   const [proofLink, setProofLink] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
@@ -207,7 +215,7 @@ export default function WheelClientPage() {
     setClaimed(false); 
     setResult(null);
     setHasClickedMint(false);
-    setProofLink(""); // Reset du champ texte
+    setProofLink(""); 
 
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
@@ -226,9 +234,13 @@ export default function WheelClientPage() {
       else if (questLabel === "Mini app quiz") setActiveQuiz(getRandomMiniAppQuiz());
       else setActiveQuiz(null);
 
+      // On enregistre la date du spin SAUF si c'est un "Bonus spin" OU une quête "Coming Soon"
+      const isComingSoon = COMING_SOON_QUESTS.includes(questLabel);
       if (address && !DEV_MODE) {
         const key = `dw:lastSpin:${address.toLowerCase()}`;
-        if (questLabel !== "Bonus spin") localStorage.setItem(key, String(Date.now()));
+        if (questLabel !== "Bonus spin" && !isComingSoon) {
+            localStorage.setItem(key, String(Date.now()));
+        }
       }
       setSpinning(false);
     }, SPIN_DURATION_MS);
@@ -259,8 +271,8 @@ export default function WheelClientPage() {
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
   
-  // Est-ce une quête sociale qui nécessite un lien ?
   const isSocialQuest = SOCIAL_QUESTS.includes(result || "");
+  const isComingSoon = COMING_SOON_QUESTS.includes(result || "");
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
@@ -299,9 +311,12 @@ export default function WheelClientPage() {
 
       {/* QUIZ MODAL */}
       {activeQuiz && !quizResult && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in-95">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(59,130,246,0.3)]">
-            <h3 className="text-lg font-bold text-white mb-6 text-center leading-tight">
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95">
+          <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(59,130,246,0.5)]">
+            <div className="text-blue-400 text-xs font-bold uppercase tracking-widest text-center mb-2">
+              Quiz Challenge
+            </div>
+            <h3 className="text-xl font-black text-white mb-8 text-center leading-snug">
               {activeQuiz.question}
             </h3>
             <div className="flex flex-col gap-3">
@@ -309,7 +324,7 @@ export default function WheelClientPage() {
                 <button
                   key={index}
                   onClick={() => handleAnswer(index)}
-                  className="w-full py-3 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 hover:border-blue-400 rounded-xl text-left text-sm font-medium transition-all active:scale-95"
+                  className="w-full py-4 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 hover:border-blue-400 rounded-xl text-left text-sm font-bold text-slate-200 transition-all active:scale-95 shadow-lg"
                 >
                   {choice}
                 </button>
@@ -345,12 +360,13 @@ export default function WheelClientPage() {
                 <div className="text-sm font-bold text-emerald-400">
                   {result === "Mint My Nft" ? "NFT Unlocked! 🎨" : 
                    result === "Test a top mini app" ? "Discovery Time! 🔭" :
+                   isComingSoon ? "Coming Soon 🚧" :
                    "Quest Complete!"}
                 </div>
             </div>
 
             {/* --- CHAMP INPUT POUR QUETES SOCIALES --- */}
-            {isSocialQuest && !claimed && (
+            {isSocialQuest && !claimed && !isComingSoon && (
                 <div className="mb-3 w-full">
                     <label className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 block">Proof of Work</label>
                     <input 
@@ -387,9 +403,23 @@ export default function WheelClientPage() {
                 <span>📱 Step 1: Open App</span>
               </a>
 
-            ) : (
+            ) : isComingSoon ? (
+              // BOUTON "COMING SOON" (Rejouer)
               <button
-                // 👇 CONDITION BLOQUANTE : Si Social Quest et lien trop court (<10 chars) -> Bouton désactivé
+                onClick={() => {
+                    // Reset manuel du cooldown et de l'état
+                    setResult(null);
+                    setCooldown(0);
+                    // On ne stocke rien en localStorage donc on peut rejouer direct
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg border border-slate-600 shadow-lg transform transition-all active:scale-95"
+              >
+                <span>See you soon 👋 (Spin Again 🔄)</span>
+              </button>
+
+            ) : (
+              // BOUTON CLAIM CLASSIQUE
+              <button
                 disabled={!address || claimed || !walletClient || (isSocialQuest && proofLink.length < 10)}
                 onClick={async () => {
                   if (!address || !result || !walletClient) return;
@@ -419,7 +449,6 @@ export default function WheelClientPage() {
                   try {
                     const delta = basePoints;
                     const nonce = await getPlayerNonce(address);
-                    // On envoie le lien de preuve (proofLink) si c'est une quête sociale, sinon le choix du quiz
                     const proof = isQuiz ? selectedChoice : (isSocialQuest ? proofLink : null);
                     
                     const { signature, deadline } = await signReward(address, result, delta, nonce, proof);
@@ -451,7 +480,9 @@ export default function WheelClientPage() {
         </div>
       )}
 
+      {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
+
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -2 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -481,6 +512,7 @@ export default function WheelClientPage() {
           </g>
         </svg>
 
+        {/* BOUTON SPIN */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!canSpin} className={`pointer-events-auto w-28 h-28 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] overflow-hidden relative transition-transform active:scale-95 ${!canSpin ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}>
             <img src="/base-logo-in-blue.png" alt="Spin" className="absolute inset-0 w-full h-full object-cover z-0" />
@@ -491,6 +523,7 @@ export default function WheelClientPage() {
         </div>
       </div>
 
+      {/* --- SECTION BADGES COMPACTE --- */}
       <div className="w-full max-w-lg border-t border-slate-800/50 pt-4 px-4">
         <h2 className="text-sm font-bold mb-4 text-center text-slate-500 uppercase tracking-widest">
           Your Trophy Room
@@ -502,6 +535,7 @@ export default function WheelClientPage() {
         )}
       </div>
 
+      {/* LEADERBOARD */}
       <div className="w-full max-w-lg pb-10">
          <Leaderboard />
       </div>
