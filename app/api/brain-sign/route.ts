@@ -25,23 +25,26 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // 👇 LE COEUR DU SUCCÈS : Alignement parfait avec votre Solidity
+    // 👇 CORRECTION MAJEURE : "DailyWheelBrain" (Vu sur votre capture)
     const domain = {
-      name: "DailyWheelBrain", // <--- LE BON NOM
+      name: "DailyWheelBrain", 
       version: "1",
       chainId: 8453, 
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
     const types = {
-      Reward: [ // <--- LA STRUCTURE EXACTE DU CONTRAT
+      Reward: [
         { name: "player", type: "address" },
         { name: "questId", type: "string" },
-        { name: "delta", type: "int256" }, // int256 et pas uint256
+        { name: "delta", type: "int256" },
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
     } as const;
+
+    const isNegative = delta < 0;
+    const absAmount = BigInt(Math.abs(delta));
 
     const signature = await account.signTypedData({
       domain,
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       message: {
         player: player as `0x${string}`,
         questId: questId,
-        delta: BigInt(delta), // On passe directement la valeur (positive ou négative)
+        delta: BigInt(delta),
         nonce: BigInt(nonce),
         deadline: BigInt(deadline),
       },
