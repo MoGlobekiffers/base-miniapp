@@ -6,32 +6,37 @@ import OnchainKitProviderClient from "./OnchainKitProviderClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// 👇 VOTRE URL EXACTE
+// 👇 VOTRE URL DE BASE
 const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
 export const metadata: Metadata = {
-  // 👇 CETTE LIGNE EST CRUCIALE POUR CORRIGER L'IMAGE
   metadataBase: new URL(APP_URL),
+  title: "DailyWheel",
+  description: "Spin daily to earn Brain Points on Base.",
   
-openGraph: {
+  openGraph: {
     title: "DailyWheel",
-    description: "Spin daily to earn Brain Points and badges.",
+    description: "Spin daily to earn Brain Points on Base.",
+    url: APP_URL,
+    siteName: "DailyWheel",
     images: [
       {
-        // 👇 ON FORCE LE LIEN COMPLET ICI
-        url: "https://base-miniapp-gamma.vercel.app/preview-wheel.png", 
-        width: 1200,
-        height: 630,
-        alt: "DailyWheel Preview",
+        url: "/base-logo-in-blue.png", // On teste avec le LOGO pour être sûr (plus léger)
+        width: 400,
+        height: 400,
+        alt: "DailyWheel Logo",
       },
     ],
+    locale: "en_US",
+    type: "website",
   },
+  
   other: {
     "fc:frame": JSON.stringify({
       version: "next",
-      imageUrl: `${APP_URL}/preview-wheel.png`,
+      imageUrl: `${APP_URL}/base-logo-in-blue.png`, // Idem ici
       button: {
-        title: "Spin ⚡",
+        title: "Launch App 🚀",
         action: {
           type: "launch_frame",
           name: "DailyWheel",
