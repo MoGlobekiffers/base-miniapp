@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
 
+// Points par quête
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
   "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3,
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { player, questId, delta, nonce, deadline } = body;
 
-    // --- 1. VERIFICATION DE LA CLE ---
+    // 1. Récupération de la clé privée
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -23,21 +24,21 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
-    // --- 2. VERIFICATION DES POINTS ---
+    // 2. Vérification des points
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // --- 3. SIGNATURE EIP-712 (C'est ici que ça change !) ---
+    // 3. CONSTRUCTION DE LA SIGNATURE EIP-712 (Le cœur du correctif)
     
-    // Configuration du "Domaine" (L'en-tête du formulaire)
+    // Le Domaine : Doit correspondre au constructeur du Smart Contract
     const domain = {
-      name: "BrainScoreSigned", // Nom probable du contrat (essayez BrainScoreSigned si ça rate)
+      name: "BrainScoreSigned", // On parie sur ce nom vu vos fichiers
       version: "1",
       chainId: 8453, // Base Mainnet
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
-    // Configuration des "Types" (Les champs du formulaire)
+    // Les Types : Doivent correspondre à la struct dans le Smart Contract
     const types = {
       Claim: [
         { name: "player", type: "address" },
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
         deadline: BigInt(deadline),
       },
     });
+
+    console.log("✅ Signed EIP-712 message for", player);
 
     return NextResponse.json({ signature });
 
