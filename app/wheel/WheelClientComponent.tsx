@@ -6,6 +6,7 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
+import { useBrain, addBrain } from "../brain";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
