@@ -3,8 +3,6 @@ import { createWalletClient, http, toHex, keccak256, encodePacked } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 
-// ⚠️ C'est ici que la synchronisation est importante
-// Cette liste doit être EXACTEMENT la même que dans WheelClientComponent.tsx
 const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5,
   "Farcaster Flash Quiz": 5,
@@ -16,7 +14,7 @@ const QUEST_POINTS: Record<string, number> = {
   "Test a top mini app": 3,
   "Bonus spin": 1,
   "Meme Factory": 4,
-  "Mint My Nft": 3,       // <--- Mis à jour ici
+  "Mint My Nft": 3,
   "Mini apps mashup": 4,
   "Crazy promo": 4,
   "Bankruptcy": -10,
@@ -37,38 +35,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // 2. Vérification de sécurité : Est-ce que les points demandés sont corrects ?
-    // On vérifie si la quête existe et si les points correspondent à notre tableau officiel
     const officialPoints = QUEST_POINTS[questId];
     
     if (officialPoints === undefined) {
       return NextResponse.json({ error: "Invalid Quest ID" }, { status: 400 });
     }
 
-    // On accepte si le delta envoyé correspond aux points officiels
-    // (Note: pour "Bankruptcy" c'est -10, donc on vérifie l'égalité stricte)
     if (delta !== officialPoints) {
        return NextResponse.json({ error: "Cheating attempt: Points mismatch" }, { status: 403 });
     }
 
-    // 3. Préparation de la signature avec la clé privée du serveur
-    // La clé doit être dans le fichier .env (BRAIN_SIGNER_PRIVATE_KEY)
-    const privateKey = process.env.BRAIN_SIGNER_PRIVATE_KEY as `0x${string}`;
-    if (!privateKey) {
-      console.error("Missing BRAIN_SIGNER_PRIVATE_KEY");
-      return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+    // --- ZONE DE DEBUG ET RECUPERATION CLE ---
+    let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY;
+    
+    // Debug dans les logs Vercel (Fonction > Logs)
+    console.log(`[DEBUG] Checking BRAIN_SIGNER_PRIVATE_KEY... Found? ${!!rawKey}`);
+
+    // Si pas trouvée, on essaie l'autre nom possible
+    if (!rawKey) {
+        console.log(`[DEBUG] Key missing. Trying fallback: SIGNER_PRIVATE_KEY`);
+        rawKey = process.env.SIGNER_PRIVATE_KEY;
     }
+
+    if (!rawKey) {
+      console.error("!!! CRITICAL ERROR: No private key found in env vars !!!");
+      // On renvoie une erreur explicite pour le client
+      return NextResponse.json({ error: "Server Error: Private Key Config Missing" }, { status: 500 });
+    }
+
+    // Nettoyage de la clé (parfois des espaces ou des guillemets traînent)
+    // On s'assure qu'elle commence par 0x
+    let cleanKey = rawKey.trim().replace(/"/g, '');
+    if (!cleanKey.startsWith("0x")) {
+        cleanKey = `0x${cleanKey}`;
+    }
+    
+    const privateKey = cleanKey as `0x${string}`;
+    // ------------------------------------------
 
     const account = privateKeyToAccount(privateKey);
     
-    // Pour la signature, on traite les valeurs négatives (ex: Bankruptcy)
-    // Le contrat s'attend à recevoir un uint256 pour le montant (valeur absolue)
-    // et un booléen pour le signe.
     const absAmount = BigInt(Math.abs(delta));
     const isNegative = delta < 0;
 
-    // Hachage des données (doit correspondre exactement au Smart Contract)
-    // keccak256(abi.encodePacked(player, amount, isNegative, nonce, deadline))
     const messageHash = keccak256(
       encodePacked(
         ["address", "uint256", "bool", "uint256", "uint256"],
@@ -76,7 +85,6 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Signature du hash
     const signature = await account.signMessage({
         message: { raw: messageHash }
     });
