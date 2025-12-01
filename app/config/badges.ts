@@ -3,7 +3,8 @@ export type Badge = {
   name: string;
   description: string;
   image: string;
-  category: "Score" | "Gameplay" | "Special";
+  // 👇 J'ai ajouté "NFT" ici pour qu'on puisse créer cette nouvelle catégorie
+  category: "Score" | "Gameplay" | "Special" | "NFT";
   minScore?: number;
 };
 
@@ -99,6 +100,16 @@ export const BADGES: Badge[] = [
     description: "Play on Saturday and Sunday consecutively for 8 weeks.",
     image: "/badges/weekend_warrior.png",
     category: "Special",
+    minScore: 0,
+  },
+
+  // --- 4. NFT Tiers (NOUVEAU) ---
+  {
+    id: 30, // J'ai mis 30 pour laisser de la place aux autres catégories
+    name: "Pixel Holder",
+    description: "Own the exclusive Pixel Brainiac NFT.",
+    image: "/nft-badge.png", // Assurez-vous que l'image est bien dans public/
+    category: "NFT",
     minScore: 0,
   },
 ];

@@ -23,12 +23,19 @@ import Leaderboard from "../components/Leaderboard";
 import BadgesPanel from "../components/BadgesPanel"; 
 
 /* =======================
+ * Configuration NFT
+ * ======================= */
+// 👇 VOS INFOS DE COLLECTION
+const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
+const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
+
+/* =======================
  * Quests & appearance
  * ======================= */
 const QUESTS: string[] = [
   "Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz", "Cast Party",
   "Like Storm", "Reply Sprint", "Invite & Share", "Test a top mini app",
-  "Bonus spin", "Meme Factory", "Mint my NFT Free", "Mini apps mashup",
+  "Bonus spin", "Meme Factory", "Mint My Nft", "Mini apps mashup",
   "Crazy promo", "Bankruptcy", "Creative #gm", "Daily check-in",
   "Mystery Challenge", "Bonus spin", "Double points", "Web3 Survivor",
 ];
@@ -54,7 +61,8 @@ const QUEST_POINTS: Record<string, number> = {
   "Base Speed Quiz": 5, "Farcaster Flash Quiz": 5, "Mini app quiz": 5,
   "Cast Party": 3, "Like Storm": 3, "Reply Sprint": 3, "Invite & Share": 3,
   "Test a top mini app": 3, "Bonus spin": 1, "Meme Factory": 4,
-  "Mint my NFT Free": 3, "Mini apps mashup": 4, "Crazy promo": 4,
+  "Mint My Nft": 3, 
+  "Mini apps mashup": 4, "Crazy promo": 4,
   "Bankruptcy": -10, "Creative #gm": 3, "Daily check-in": 2,
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
@@ -143,8 +151,6 @@ export default function WheelClientPage() {
   });
 
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
-  const brain = currentOnChainScore; 
-  const hasDouble = false; 
   
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -156,14 +162,16 @@ export default function WheelClientPage() {
   const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(null);
   const [claimed, setClaimed] = useState(false);
   
+  // State pour suivre le clic sur le lien NFT
+  const [hasClickedMint, setHasClickedMint] = useState(false);
+  
   useEffect(() => { setMounted(true); }, []);
 
   const anglePerSegment = 360 / SEGMENTS;
   const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => {
     const a0 = i * anglePerSegment;
     const a1 = (i + 1) * anglePerSegment;
-    const mid = a0 + anglePerSegment / 2;
-    return { i, a0, a1, mid, color: COLORS[i % COLORS.length], label: QUESTS[i] };
+    return { i, a0, a1, color: COLORS[i % COLORS.length], label: QUESTS[i] };
   }), [anglePerSegment]);
 
   useEffect(() => {
@@ -184,7 +192,16 @@ export default function WheelClientPage() {
   const handleSpin = () => {
     if (!address) { alert("Connect your wallet to spin."); return; }
     if (!DEV_MODE && (spinning || cooldown > 0)) return;
-    setSpinning(true); setActiveQuiz(null); setSelectedChoice(null); setQuizResult(null); setClaimed(false); setResult(null);
+    
+    // Reset complet des états
+    setSpinning(true); 
+    setActiveQuiz(null); 
+    setSelectedChoice(null); 
+    setQuizResult(null); 
+    setClaimed(false); 
+    setResult(null);
+    setHasClickedMint(false); // Reset de l'étape NFT
+
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
     const finalRotation = rotation + extraSpins * 360 + randomDeg;
@@ -194,16 +211,14 @@ export default function WheelClientPage() {
       const normalized = ((POINTER_ANGLE - final) % 360 + 360) % 360;
       const idx = Math.floor(normalized / anglePerSegment) % SEGMENTS;
       
-      // 👇 ICI : ON FORCE LA ROUE À TOMBER SUR "Mint my NFT Free" POUR LE TEST
-      // Changez cette ligne pour "const questLabel = QUESTS[idx];" quand le test est fini.
-      const questLabel = QUESTS[idx]; 
-      // const questLabel = QUESTS[idx]; // <-- Ligne originale commentée
-
+      const questLabel = QUESTS[idx];
       setResult(questLabel);
+
       if (questLabel === "Base Speed Quiz") setActiveQuiz(getRandomBaseQuiz());
       else if (questLabel === "Farcaster Flash Quiz") setActiveQuiz(getRandomFarcasterQuiz());
       else if (questLabel === "Mini app quiz") setActiveQuiz(getRandomMiniAppQuiz());
       else setActiveQuiz(null);
+
       if (address && !DEV_MODE) {
         const key = `dw:lastSpin:${address.toLowerCase()}`;
         if (questLabel !== "Bonus spin") localStorage.setItem(key, String(Date.now()));
@@ -272,64 +287,94 @@ export default function WheelClientPage() {
          <span>{cooldownLabel}</span>
       </div>
 
-      {/* PANEL RECLAMATION */}
+      {/* PANEL RECLAMATION (LOGIQUE MODIFIÉE) */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             
             <div className="flex w-full justify-between items-center mb-2">
-                <div className="text-sm font-bold text-emerald-400">Quest Complete!</div>
-                
-                {/* 👇 AJOUT : BOUTON POUR ALLER MINTER LE NFT */}
-                {result === "Mint my NFT Free" && (
-                    <a 
-                      href="https://opensea.io/fr/collection/pixel-brain-parade-330142156" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-1 transition-transform hover:scale-105"
-                    >
-                      <span>Go Mint 🔗</span>
-                    </a>
-                )}
+                <div className="text-sm font-bold text-emerald-400">
+                  {result === "Mint My Nft" ? "NFT Unlocked! 🎨" : "Quest Complete!"}
+                </div>
             </div>
 
-            <button
-              disabled={!address || claimed || !walletClient}
-              onClick={async () => {
-                if (!address || !result || !walletClient) return;
-                
-                // Vérification Quiz
-                if (isQuiz && selectedChoice === null) {
-                    alert("Please select an answer!");
-                    return;
-                }
-
-                const basePoints = QUEST_POINTS[result] ?? 0;
-                if (basePoints === 0) return;
-                try {
-                  const delta = basePoints;
-                  const nonce = await getPlayerNonce(address);
+            {/* --- LOGIQUE DU BOUTON A 2 ETAPES --- */}
+            {result === "Mint My Nft" && !hasClickedMint ? (
+              // ETAPE 1 : ALLER SUR OPENSEA
+              <a 
+                href={NFT_COLLECTION_LINK}
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={() => setHasClickedMint(true)} 
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded text-center shadow-lg transform transition-all hover:scale-105 uppercase tracking-widest cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>🚀 Step 1: Mint NFT</span>
+              </a>
+            ) : (
+              // ETAPE 2 : VERIFICATION ET CLAIM
+              <button
+                disabled={!address || claimed || !walletClient}
+                onClick={async () => {
+                  if (!address || !result || !walletClient) return;
                   
-                  // Preuve Quiz
-                  const proof = isQuiz ? selectedChoice : null;
+                  // --- 🔒 VÉRIFICATION SPÉCIALE NFT ---
+                  if (result === "Mint My Nft") {
+                    try {
+                        const publicClient = createPublicClient({ 
+                            chain: base, 
+                            transport: http(process.env.NEXT_PUBLIC_RPC_URL) 
+                        });
 
-                  const { signature, deadline } = await signReward(address, result, delta, nonce, proof);
+                        // Vérification sur VOTRE contrat
+                        const balance = await publicClient.readContract({
+                            address: NFT_CONTRACT_ADDRESS as `0x${string}`,
+                            abi: [{"inputs": [{"internalType": "address","name": "owner","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}],
+                            functionName: 'balanceOf',
+                            args: [address],
+                        }) as bigint;
+
+                        if (Number(balance) === 0) {
+                            alert("⚠️ Vous ne possédez pas encore le NFT 'Pixel Brainiac' !\n\n1. Cliquez sur le lien pour Minter (Gratuit)\n2. Attendez 30 secondes\n3. Réessayez ici.");
+                            setHasClickedMint(false); // Retour à l'étape 1
+                            return; 
+                        }
+                    } catch (error) {
+                        console.error("Erreur vérification NFT", error);
+                        alert("Erreur de vérification. Réessayez dans un instant.");
+                        return;
+                    }
+                  }
+                  // --- FIN VÉRIFICATION ---
+
+                  if (isQuiz && selectedChoice === null) { alert("Please select an answer!"); return; }
+
+                  const basePoints = QUEST_POINTS[result] ?? 0;
+                  if (basePoints === 0) return;
                   
-                  await sendClaim(walletClient, delta, nonce, deadline, signature, address);
-                  addBrain(address, result, basePoints);
-                  setClaimed(true);
-                  refetchScore();
-                } catch (err: any) { 
-                  console.error(err); 
-                  // Affiche l'erreur (ex: Vous n'avez pas le NFT)
-                  alert(err.message || "Error sending onchain claim"); 
-                }
-              }}
-              className={`w-full px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95
-                  ${!address || claimed ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-emerald-500 text-white hover:bg-emerald-400"}`}
-            >
-              {claimed ? "Done" : `Claim +${QUEST_POINTS[result] ?? 0}`}
-            </button>
+                  try {
+                    const delta = basePoints;
+                    const nonce = await getPlayerNonce(address);
+                    const proof = isQuiz ? selectedChoice : null;
+                    const { signature, deadline } = await signReward(address, result, delta, nonce, proof);
+                    await sendClaim(walletClient, delta, nonce, deadline, signature, address);
+                    addBrain(address, result, basePoints);
+                    setClaimed(true);
+                    refetchScore();
+                  } catch (err: any) { 
+                    console.error(err); 
+                    alert(err.message || "Error sending onchain claim"); 
+                  }
+                }}
+                className={`w-full px-4 py-2 rounded text-xs font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95
+                    ${!address || claimed 
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+                      : "bg-emerald-500 text-white hover:bg-emerald-400"
+                    }`}
+              >
+                {claimed ? "Done ✅" : (result === "Mint My Nft" ? "Step 2: Verify & Claim 💰" : `Claim +${QUEST_POINTS[result] ?? 0}`)}
+              </button>
+            )}
+
           </div>
         </div>
       )}

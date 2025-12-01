@@ -3,13 +3,15 @@ import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import BrainScoreABI from "../../../types/BrainScoreSigned.json";
-// 👇 CHANGEMENT ICI AUSSI
 import Redis from "ioredis";
 
 const rawKey = process.env.SIGNER_PRIVATE_KEY || "";
 const PRIVATE_KEY = (rawKey.startsWith("0x") ? rawKey : "0x" + rawKey) as `0x${string}`;
 const BRAIN_SCORE_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 const BADGE_CONTRACT = process.env.NEXT_PUBLIC_BADGE_CONTRACT as `0x${string}`;
+
+// 👇 AJOUT : Adresse de votre collection NFT pour la vérification serveur
+const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 
 // Connexion Redis
 const redis = new Redis(process.env.REDIS_URL!);
@@ -26,7 +28,7 @@ export async function POST(request: Request) {
 
     if (!userAddress || !badgeId) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
-    // 1. Lire Score
+    // 1. Lire Score (Sert pour les badges 1 à 5)
     const data = await publicClient.readContract({
       address: BRAIN_SCORE_CONTRACT,
       abi: BrainScoreABI.abi,
@@ -69,6 +71,23 @@ export async function POST(request: Request) {
         isEligible = Number(weekends) >= 8; 
         break;
 
+      // 👇 AJOUT : CAS 30 POUR LE NFT
+      case 30: 
+        try {
+          const balance = await publicClient.readContract({
+            address: NFT_CONTRACT_ADDRESS,
+            abi: [{"inputs": [{"internalType": "address","name": "owner","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}],
+            functionName: "balanceOf",
+            args: [userAddress],
+          }) as bigint;
+          // Si l'utilisateur possède au moins 1 NFT, il est éligible
+          isEligible = Number(balance) > 0;
+        } catch (e) {
+          console.error("Error checking NFT balance:", e);
+          isEligible = false;
+        }
+        break;
+
       default: isEligible = false;
     }
 
@@ -78,6 +97,7 @@ export async function POST(request: Request) {
 
     // 3. Signature
     const account = privateKeyToAccount(PRIVATE_KEY);
+    // Vérifiez que le chainId ici (8453) correspond bien à Base Mainnet
     const domain = { name: "BrainBadges", version: "1", chainId: 8453, verifyingContract: BADGE_CONTRACT };
     const types = { MintBadge: [{ name: "user", type: "address" }, { name: "badgeId", type: "uint256" }, { name: "nonce", type: "uint256" }] };
     const nonce = Date.now(); 
