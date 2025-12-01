@@ -1,4 +1,4 @@
-k"use client";
+"use client";
 
 import { useState } from "react";
 import { useWriteContract, useReadContract } from "wagmi";
