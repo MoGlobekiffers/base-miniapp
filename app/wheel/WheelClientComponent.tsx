@@ -52,7 +52,7 @@ const COMING_SOON_QUESTS = [
 // 👇 NOUVEAU : INSTRUCTIONS DÉTAILLÉES PAR QUÊTE
 const QUEST_INSTRUCTIONS: Record<string, string> = {
   "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
-  "Like Storm": "❤️ Go like15 recent cass from your feed.",
+  "Like Storm": "❤️ Go lik 15 recent cat from your feed",
   "Reply Sprint": "💬 Reply to 1 cast with something meaningful.",
   "Invite & Share": "🔗 Share this frame or invite a friend to play.",
   "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
