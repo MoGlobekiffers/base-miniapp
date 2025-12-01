@@ -25,11 +25,9 @@ import BadgesPanel from "../components/BadgesPanel";
 /* =======================
  * Configuration NFT & Mini Apps
  * ======================= */
-// 👇 VOS INFOS DE COLLECTION
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 
-// 👇 LES 2 LIENS POUR LA ROTATION 12H
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
@@ -50,7 +48,6 @@ const COLORS = [
   "#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308",
   "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316",
 ];
-const BG_COLOR = "#020617";
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
@@ -129,16 +126,16 @@ async function sendClaim(walletClient: any, delta: number, nonce: number, deadli
   });
 }
 
-/* =======================
- * Page component
- * ======================= */
 const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
 
   useEffect(() => {
-    const load = async () => { await sdk.actions.ready(); };
+    const load = async () => { 
+        await sdk.actions.ready(); 
+        try { await sdk.actions.expand(); } catch (e) {}
+    };
     if (sdk && !isSDKLoaded) { setIsSDKLoaded(true); load(); }
   }, [isSDKLoaded]);
 
@@ -165,8 +162,6 @@ export default function WheelClientPage() {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(null);
   const [claimed, setClaimed] = useState(false);
-  
-  // State pour suivre le clic sur le lien NFT ou Mini App
   const [hasClickedMint, setHasClickedMint] = useState(false);
   
   useEffect(() => { setMounted(true); }, []);
@@ -197,14 +192,13 @@ export default function WheelClientPage() {
     if (!address) { alert("Connect your wallet to spin."); return; }
     if (!DEV_MODE && (spinning || cooldown > 0)) return;
     
-    // Reset complet des états
     setSpinning(true); 
     setActiveQuiz(null); 
     setSelectedChoice(null); 
     setQuizResult(null); 
     setClaimed(false); 
     setResult(null);
-    setHasClickedMint(false); // Reset de l'étape NFT/Lien
+    setHasClickedMint(false); 
 
     const extraSpins = 8;
     const randomDeg = Math.random() * 360;
@@ -254,10 +248,11 @@ export default function WheelClientPage() {
   const resetDaily = () => { if (!address) return; localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); };
   const canSpin = !!address && !(spinning || (!DEV_MODE && (cooldown > 0 || !address)));
   const isQuiz = ["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "");
+  // Logique d'affichage du claim : Si ce n'est PAS un quiz, OU si c'est un quiz et qu'on a gagné.
   const showClaimPanel = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!isQuiz || quizResult === "correct");
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden">
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
 
       {/* HEADER TOP BAR */}
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
@@ -291,7 +286,46 @@ export default function WheelClientPage() {
          <span>{cooldownLabel}</span>
       </div>
 
-      {/* PANEL RECLAMATION (LOGIQUE MODIFIÉE) */}
+      {/* --- 👇 LE BLOC QUI MANQUAIT : AFFICHAGE DU QUIZ --- */}
+      {activeQuiz && !quizResult && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in-95">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(59,130,246,0.3)]">
+            <h3 className="text-lg font-bold text-white mb-6 text-center leading-tight">
+              {activeQuiz.question}
+            </h3>
+            <div className="flex flex-col gap-3">
+              {activeQuiz.choices.map((choice, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(index)}
+                  className="w-full py-3 px-4 bg-slate-800 hover:bg-blue-600 border border-slate-600 hover:border-blue-400 rounded-xl text-left text-sm font-medium transition-all active:scale-95"
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 👇 AFFICHAGE SI MAUVAISE REPONSE --- */}
+      {quizResult === "wrong" && (
+         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl">
+               <div className="text-4xl mb-4">❌</div>
+               <h3 className="text-xl font-bold text-red-400 mb-2">Wrong Answer!</h3>
+               <p className="text-slate-400 text-sm mb-6">You missed the points this time. Try again in 12h!</p>
+               <button 
+                 onClick={() => { setQuizResult(null); setResult(null); }} 
+                 className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold"
+               >
+                 Close
+               </button>
+            </div>
+         </div>
+      )}
+
+      {/* PANEL RECLAMATION (CLAIM) */}
       {showClaimPanel && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -304,9 +338,8 @@ export default function WheelClientPage() {
                 </div>
             </div>
 
-            {/* --- LOGIQUE DES BOUTONS SPECIAUX (STEP 1) --- */}
+            {/* --- LOGIQUE DES BOUTONS --- */}
             
-            {/* CAS 1 : MINT NFT (Step 1) */}
             {result === "Mint My Nft" && !hasClickedMint ? (
               <a 
                 href={NFT_COLLECTION_LINK}
@@ -318,10 +351,8 @@ export default function WheelClientPage() {
                 <span>🚀 Step 1: Mint NFT</span>
               </a>
 
-            // CAS 2 : TEST MINI APP (Step 1 - Rotation 12h)
             ) : result === "Test a top mini app" && !hasClickedMint ? (
               <a 
-                // 👇 Calcule le lien en fonction de l'heure (change toutes les 12h)
                 href={Math.floor(Date.now() / (12 * 60 * 60 * 1000)) % 2 === 0 ? MINI_APP_1 : MINI_APP_2}
                 target="_blank" 
                 rel="noopener noreferrer"
@@ -331,39 +362,28 @@ export default function WheelClientPage() {
                 <span>📱 Step 1: Open App</span>
               </a>
 
-            // CAS 3 : CLAIM CLASSIQUE ou STEP 2
             ) : (
               <button
                 disabled={!address || claimed || !walletClient}
                 onClick={async () => {
                   if (!address || !result || !walletClient) return;
                   
-                  // --- 🔒 VÉRIFICATION SPÉCIALE NFT ---
+                  // Verification NFT
                   if (result === "Mint My Nft") {
                     try {
-                        const publicClient = createPublicClient({ 
-                            chain: base, 
-                            transport: http(process.env.NEXT_PUBLIC_RPC_URL) 
-                        });
+                        const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
                         const balance = await publicClient.readContract({
                             address: NFT_CONTRACT_ADDRESS as `0x${string}`,
                             abi: [{"inputs": [{"internalType": "address","name": "owner","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}],
                             functionName: 'balanceOf',
                             args: [address],
                         }) as bigint;
-
                         if (Number(balance) === 0) {
-                            alert("⚠️ Vous ne possédez pas encore le NFT 'Pixel Brainiac' !\n\n1. Cliquez sur le lien pour Minter (Gratuit)\n2. Attendez 30 secondes\n3. Réessayez ici.");
-                            setHasClickedMint(false); 
-                            return; 
+                            alert("⚠️ Vous ne possédez pas encore le NFT !");
+                            setHasClickedMint(false); return; 
                         }
-                    } catch (error) {
-                        console.error("Erreur vérification NFT", error);
-                        alert("Erreur de vérification. Réessayez dans un instant.");
-                        return;
-                    }
+                    } catch (error) { alert("Erreur vérification NFT"); return; }
                   }
-                  // --- FIN VÉRIFICATION ---
 
                   if (isQuiz && selectedChoice === null) { alert("Please select an answer!"); return; }
 
@@ -405,19 +425,18 @@ export default function WheelClientPage() {
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
 
-{/* MODIFICATION ICI : top passe de -10 à -2 */}
-<div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -4 }}>
-  <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
-    <defs>
-      <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#22d3ee" />
-        <stop offset="100%" stopColor="#3b82f6" />
-      </linearGradient>
-    </defs>
-    {/* J'ai aussi ajouté un petit filtre drop-shadow pour qu'elle ressorte bien sur le bord */}
-    <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
-  </svg>
-</div>
+        <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -2 }}>
+          <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
+            <defs>
+              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#3b82f6" />
+              </linearGradient>
+            </defs>
+            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+          </svg>
+        </div>
+
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
