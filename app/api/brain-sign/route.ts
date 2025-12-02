@@ -10,15 +10,11 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
-// 👇 ADRESSE DE VOTRE CONTRAT (CELLE DE L'ERREUR) - ON LA FORCE ICI
-const CONTRACT_ADDRESS = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { player, questId, delta, nonce } = body;
 
-    // Clé privée
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -26,29 +22,29 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
-    // Vérif Points
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // --- SIGNATURE EIP-712 ---
+    // DOMAINE EXACT (Vu sur votre capture)
     const domain = {
       name: "DailyWheelBrain", 
       version: "1",
       chainId: 8453, 
-      verifyingContract: CONTRACT_ADDRESS as `0x${string}`, // Utilisation de l'adresse forcée
+      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
+    // TYPES EXACTS (Vu sur votre capture Solidity)
     const types = {
       Reward: [
         { name: "player", type: "address" },
         { name: "questId", type: "string" },
-        { name: "delta", type: "int256" },
+        { name: "delta", type: "int256" }, // int256 est crucial ici
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
     } as const;
 
-    // Deadline : Maintenant + 1h
+    // Deadline 1h
     const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
@@ -58,7 +54,7 @@ export async function POST(req: NextRequest) {
       message: {
         player: player as `0x${string}`,
         questId: questId,
-        delta: BigInt(delta),
+        delta: BigInt(delta), // Sera converti correctement en int256 signé
         nonce: BigInt(nonce),
         deadline: validDeadline,
       },

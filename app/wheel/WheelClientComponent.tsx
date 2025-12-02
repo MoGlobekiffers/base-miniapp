@@ -12,21 +12,18 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 1. CONFIGURATION
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Mode Test
+const COOLDOWN_SEC = 0; // TEST MODE
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
-
-// 👇 ADRESSE FORCÉE (La même que l'API)
-const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
+const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
 
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
 const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
@@ -95,6 +92,7 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
+// Nonce unique basé sur le temps
 async function getNonce(player: string) {
   return Date.now(); 
 }
@@ -107,6 +105,7 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
+  // Récupère la deadline
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -123,7 +122,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
 
   return await walletClient.writeContract({
     account: player as `0x${string}`,
-    address: BRAIN_CONTRACT as `0x${string}`,
+    address: BRAIN_CONTRACT,
     abi: CORRECT_ABI,
     functionName: "claim",
     args: [rewardStruct, signature],
@@ -142,7 +141,7 @@ export default function WheelClientPage() {
   }, [isSDKLoaded]);
 
   const { data: scoreData, refetch: refetchScore } = useReadContract({
-    address: BRAIN_CONTRACT as `0x${string}`, abi: CORRECT_ABI, functionName: "getPlayer", args: [address as `0x${string}`], query: { staleTime: 0, enabled: !!address }
+    address: BRAIN_CONTRACT, abi: CORRECT_ABI, functionName: "getPlayer", args: [address as `0x${string}`], query: { staleTime: 0, enabled: !!address }
   });
   const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
   
@@ -276,7 +275,9 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
+                    // 👇 RÉCUPÉRATION DEADLINE DE L'API
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
+                    // 👇 ENVOI A LA BLOCKCHAIN
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -288,17 +289,22 @@ export default function WheelClientPage() {
 
       {/* --- LA ROUE (SVG) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE RECENTRÉE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
-            <path d="M25 40 L10 10 H40 Z" fill="#3b82f6" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+            <defs>
+              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#3b82f6" />
+              </linearGradient>
+            </defs>
+            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
           </svg>
         </div>
 
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* 👇 CORRECTION VISUELLE : transformBox="fill-box" remis */}
+          {/* 👇 ICI LE FIX VISUEL : transformBox="fill-box" */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
@@ -327,3 +333,4 @@ export default function WheelClientPage() {
       <div className="w-full max-w-lg pb-10"><Leaderboard /></div>
     </main>
   );
+}
