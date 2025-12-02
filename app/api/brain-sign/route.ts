@@ -25,35 +25,37 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // Nom confirmé par votre capture
+    // 1. Domaine Correct (Vu dans BrainScore.sol)
     const domain = {
-      name: "DailyWheelBrain", 
+      name: "BrainScore",
       version: "1",
       chainId: 8453, 
-      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`, // Ou l'adresse en dur si vous préférez
     } as const;
 
+    // 2. Types Corrects (Pas de player, pas de questId)
     const types = {
       Reward: [
-        { name: "player", type: "address" },
-        { name: "questId", type: "string" },
-        { name: "delta", type: "int256" },
+        { name: "amount", type: "uint256" },
+        { name: "isNegative", type: "bool" },
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
     } as const;
 
     const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    
+    const isNegative = delta < 0;
+    const absAmount = BigInt(Math.abs(delta));
 
     const signature = await account.signTypedData({
       domain,
       types,
       primaryType: "Reward",
       message: {
-        player: player as `0x${string}`,
-        questId: questId,
-        delta: BigInt(delta),
-        nonce: BigInt(nonce), // On signe le nonce reçu (Timestamp)
+        amount: absAmount,
+        isNegative: isNegative,
+        nonce: BigInt(nonce),
         deadline: validDeadline,
       },
     });

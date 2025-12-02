@@ -17,14 +17,16 @@ const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Test Mode
+const COOLDOWN_SEC = 0; // Mode Test
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
-const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
+
+// Adresse du contrat (BrainScore.sol)
+const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
 
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
 const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
@@ -50,20 +52,14 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
+// ABI EXACTE (5 arguments pour claim, pas de struct)
 const CORRECT_ABI = [
   {
     "inputs": [
-      {
-        "components": [
-          { "name": "player", "type": "address" },
-          { "name": "questId", "type": "string" },
-          { "name": "delta", "type": "int256" },
-          { "name": "nonce", "type": "uint256" },
-          { "name": "deadline", "type": "uint256" }
-        ],
-        "name": "r",
-        "type": "tuple"
-      },
+      { "name": "amount", "type": "uint256" },
+      { "name": "isNegative", "type": "bool" },
+      { "name": "nonce", "type": "uint256" },
+      { "name": "deadline", "type": "uint256" },
       { "name": "signature", "type": "bytes" }
     ],
     "name": "claim",
@@ -79,7 +75,7 @@ const CORRECT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [{"name": "owner", "type": "address"}],
+    "inputs": [{"name": "user", "type": "address"}],
     "name": "nonces",
     "outputs": [{"name": "", "type": "uint256"}],
     "stateMutability": "view",
@@ -93,9 +89,19 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Utilisez le Timestamp pour un nonce unique
 async function getNonce(player: string) {
-  return Date.now(); 
+  const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
+  
+  // On lit le nonce sur la blockchain
+  const currentNonce = await publicClient.readContract({
+    address: BRAIN_CONTRACT,
+    abi: CORRECT_ABI,
+    functionName: "nonces",
+    args: [player as `0x${string}`],
+  }) as bigint;
+  
+  // IMPORTANT : Le contrat demande (nonce + 1)
+  return Number(currentNonce) + 1; 
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
@@ -112,20 +118,16 @@ async function signReward(player: string, questId: string, delta: number, nonce:
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
   
-  const rewardStruct = {
-      player: player as `0x${string}`,
-      questId: questId,
-      delta: BigInt(delta),
-      nonce: BigInt(nonce),
-      deadline: BigInt(deadline)
-  };
+  const isNegative = delta < 0;
+  const absAmount = BigInt(Math.abs(delta));
 
+  // Appel avec 5 arguments séparés
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
     abi: CORRECT_ABI,
     functionName: "claim",
-    args: [rewardStruct, signature],
+    args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
   });
 }
 
@@ -274,8 +276,10 @@ export default function WheelClientPage() {
                   }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
+                    // 👇 APPEL GETNONCE (+1)
                     const nonce = await getNonce(address);
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
+                    // 👇 APPEL CLAIM avec 5 args
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -285,7 +289,7 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (SVG CENTRÉ) --- */}
+      {/* --- LA ROUE (SVG RESTAURÉ : transformBox='fill-box') --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
