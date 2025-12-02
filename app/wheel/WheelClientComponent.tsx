@@ -12,19 +12,21 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 1. CONFIGURATION
+// --- CONFIGURATION ---
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Cooldown désactivé pour test
+const COOLDOWN_SEC = 0; // Mode Test activé
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
-const BRAIN_CONTRACT = process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`;
+
+// 👇 ADRESSE FORCÉE (La même que l'API)
+const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
 
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
 const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
@@ -50,7 +52,6 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// 2. ABI & HELPERS
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -94,9 +95,8 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// 👇 CHANGEMENT ICI : On utilise Date.now() pour garantir un nonce unique
+// On utilise un Timestamp pour garantir l'unicité (évite "already used")
 async function getNonce(player: string) {
-  // On n'appelle plus le contrat car il ne s'incrémente pas
   return Date.now(); 
 }
 
@@ -131,7 +131,6 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
-// 3. COMPOSANT
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const { address } = useAccount();
@@ -229,6 +228,7 @@ export default function WheelClientPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
+      
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
         {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0,6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <ConnectWallet className="!h-8 !px-3 !text-xs" />}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
@@ -277,8 +277,8 @@ export default function WheelClientPage() {
                   }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
-                    // 👇 ON UTILISE LE TIMESTAMP COMME NONCE POUR ÊTRE SÛR D'AVOIR UN ID UNIQUE
-                    const nonce = await getNonce(address);
+                    // 👇 LE FIX : Date.now() direct (plus d'appel contrat)
+                    const nonce = Date.now(); 
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
@@ -289,8 +289,9 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (SVG RESTAURÉ) --- */}
+      {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
+        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -303,11 +304,11 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
+        {/* CERCLE ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* 👇 RE-AJOUT DU transformBox: "fill-box" POUR CENTRER LA ROTATION */}
-          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
+          <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
             ))}

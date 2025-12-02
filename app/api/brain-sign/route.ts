@@ -10,11 +10,15 @@ const QUEST_POINTS: Record<string, number> = {
   "Mystery Challenge": 4, "Double points": 0, "Web3 Survivor": 8,
 };
 
+// 👇 ADRESSE DE VOTRE CONTRAT (CELLE DE L'ERREUR) - ON LA FORCE ICI
+const CONTRACT_ADDRESS = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { player, questId, delta, nonce } = body; // On ignore la deadline entrante
+    const { player, questId, delta, nonce } = body;
 
+    // Clé privée
     let rawKey = process.env.BRAIN_SIGNER_PRIVATE_KEY || process.env.SIGNER_PRIVATE_KEY;
     if (!rawKey) return NextResponse.json({ error: "Server Key Missing" }, { status: 500 });
 
@@ -22,14 +26,16 @@ export async function POST(req: NextRequest) {
     if (!cleanKey.startsWith("0x")) cleanKey = `0x${cleanKey}`;
     const account = privateKeyToAccount(cleanKey as `0x${string}`);
 
+    // Vérif Points
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
+    // --- SIGNATURE EIP-712 ---
     const domain = {
       name: "DailyWheelBrain", 
       version: "1",
       chainId: 8453, 
-      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
+      verifyingContract: CONTRACT_ADDRESS as `0x${string}`, // Utilisation de l'adresse forcée
     } as const;
 
     const types = {
@@ -42,7 +48,7 @@ export async function POST(req: NextRequest) {
       ],
     } as const;
 
-    // Calcul Deadline : Maintenant + 1h (3600s)
+    // Deadline : Maintenant + 1h
     const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
@@ -58,7 +64,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 👇 CRUCIAL : On renvoie la deadline au format string
     return NextResponse.json({ signature, deadline: validDeadline.toString() });
 
   } catch (error: any) {
