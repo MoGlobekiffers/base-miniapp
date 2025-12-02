@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // DOMAINE EXACT (Vu sur votre capture)
+    // Nom confirmé par votre capture
     const domain = {
       name: "DailyWheelBrain", 
       version: "1",
@@ -33,18 +33,16 @@ export async function POST(req: NextRequest) {
       verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`,
     } as const;
 
-    // TYPES EXACTS (Vu sur votre capture Solidity)
     const types = {
       Reward: [
         { name: "player", type: "address" },
         { name: "questId", type: "string" },
-        { name: "delta", type: "int256" }, // int256 est crucial ici
+        { name: "delta", type: "int256" },
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
     } as const;
 
-    // Deadline 1h
     const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
     const signature = await account.signTypedData({
@@ -54,8 +52,8 @@ export async function POST(req: NextRequest) {
       message: {
         player: player as `0x${string}`,
         questId: questId,
-        delta: BigInt(delta), // Sera converti correctement en int256 signé
-        nonce: BigInt(nonce),
+        delta: BigInt(delta),
+        nonce: BigInt(nonce), // On signe le nonce reçu (Timestamp)
         deadline: validDeadline,
       },
     });

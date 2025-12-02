@@ -12,11 +12,12 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
+// CONFIGURATION
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // TEST MODE
+const COOLDOWN_SEC = 0; // Test Mode
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
@@ -92,7 +93,7 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Nonce unique basé sur le temps
+// Utilisez le Timestamp pour un nonce unique
 async function getNonce(player: string) {
   return Date.now(); 
 }
@@ -105,7 +106,6 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  // Récupère la deadline
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -275,9 +275,7 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 RÉCUPÉRATION DEADLINE DE L'API
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ENVOI A LA BLOCKCHAIN
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
@@ -287,7 +285,7 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE (SVG) --- */}
+      {/* --- LA ROUE (SVG CENTRÉ) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
@@ -304,7 +302,7 @@ export default function WheelClientPage() {
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* 👇 ICI LE FIX VISUEL : transformBox="fill-box" */}
+          {/* 👇 ICI : transformBox pour le centrage */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
