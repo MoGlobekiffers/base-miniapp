@@ -6,19 +6,18 @@ import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wag
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
-// 👇 Import corrigé
-import { useBrain, addBrain } from "../brain"; 
+import { useBrain, addBrain } from "../brain";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// --- CONSTANTES ---
+// 1. CONFIGURATION
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; // Cooldown 0 pour tests
+const COOLDOWN_SEC = 0; // Cooldown désactivé pour test
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
@@ -51,6 +50,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
+// 2. ABI & HELPERS
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -94,15 +94,10 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
+// 👇 CHANGEMENT ICI : On utilise Date.now() pour garantir un nonce unique
 async function getNonce(player: string) {
-  const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  const nonce = await publicClient.readContract({
-    address: BRAIN_CONTRACT,
-    abi: CORRECT_ABI,
-    functionName: "nonces",
-    args: [player as `0x${string}`],
-  }) as bigint;
-  return Number(nonce); 
+  // On n'appelle plus le contrat car il ne s'incrémente pas
+  return Date.now(); 
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
@@ -112,10 +107,7 @@ async function signReward(player: string, questId: string, delta: number, nonce:
     body: JSON.stringify({ player, questId, delta, nonce }),
   });
   const data = await res.json();
-  
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  if (!data.deadline) throw new Error("API did not return a deadline"); // Sécurité
-
   return { signature: data.signature, deadline: data.deadline };
 }
 
@@ -139,10 +131,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
-// ------------------------------------------------------------------
-// COMPOSANT PRINCIPAL
-// ------------------------------------------------------------------
-
+// 3. COMPOSANT
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const { address } = useAccount();
@@ -288,17 +277,11 @@ export default function WheelClientPage() {
                   }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
+                    // 👇 ON UTILISE LE TIMESTAMP COMME NONCE POUR ÊTRE SÛR D'AVOIR UN ID UNIQUE
                     const nonce = await getNonce(address);
-                    
-                    // RECUPERATION DE LA DEADLINE
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    
-                    // ENVOI DE LA TRANSACTION AVEC DEADLINE
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
-                    
-                    addBrain(address, result, delta); 
-                    setClaimed(true); 
-                    refetchScore();
+                    addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
                 }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
             )}
@@ -306,7 +289,7 @@ export default function WheelClientPage() {
         </div>
       )}
 
-      {/* --- LA ROUE --- */}
+      {/* --- LA ROUE (SVG RESTAURÉ) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
@@ -323,7 +306,7 @@ export default function WheelClientPage() {
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* 👇 C'EST ICI LE FIX POUR L'AXE : transformBox="fill-box" */}
+          {/* 👇 RE-AJOUT DU transformBox: "fill-box" POUR CENTRER LA ROTATION */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
