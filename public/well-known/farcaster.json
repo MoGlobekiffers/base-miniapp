@@ -7,7 +7,7 @@
   "frame": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/images/preview-wheel.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app/wheel",
     "imageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
     "buttonTitle": "Spin the Wheel",
