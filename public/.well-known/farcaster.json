@@ -14,5 +14,6 @@
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "splashBackgroundColor": "#0f172a",
     "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
-  }
-}
+ "primaryCategory": "social",
+    "tags": ["game", "daily", "rewards"
+}}
