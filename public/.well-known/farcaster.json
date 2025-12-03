@@ -21,17 +21,12 @@
     "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app",
     "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "buttonTitle": "Spin Now", 
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "splashBackgroundColor": "#0f172a",
     "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler",
+    
     "primaryCategory": "social",
-    "tags": ["game", "daily", "rewards"],
-    "subtitle": "Spin daily and earn rewards",
-    "description": "Spin the wheel to win Brain Points.",
-    "heroImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
-    "tagline": "Spin and Earn on Base", 
-    "ogTitle": "DailyWheel",
-    "ogDescription": "Spin daily to earn Brain Points.",
-    "ogImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png"
+    "tags": ["game", "daily", "rewards"]
   }
 }
