@@ -1,8 +1,8 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjE1MTk0LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NUVlN2MyODQ1MzYxMzI5RDk1RjNhZkZCNjY0NjU3NTk1NTE1RDIyMSJ9",
+    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
-    "signature": "MHhkYjk1..."
+    "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
   },
   "frame": {
     "version": "1",
@@ -21,10 +21,8 @@
     "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app",
     "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
-    "buttonTitle": "Spin ⚡",
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "splashBackgroundColor": "#0f172a",
-    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler",
     "primaryCategory": "social",
     "tags": ["game", "daily", "rewards"]
   }
