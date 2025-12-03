@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "1.0.7",
+    "@coinbase/onchainkit": "^1.1.2",
     "@farcaster/frame-sdk": "^0.0.64",
     "@farcaster/miniapp-sdk": "^0.2.1",
     "@tanstack/react-query": "^5.90.10",
@@ -18,11 +18,11 @@
     "canvas-confetti": "^1.9.4",
     "ethers": "^6.15.0",
     "ioredis": "^5.8.2",
-    "next": "15.0.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-server-dom-turbopack": "18.3.1",
-    "react-server-dom-webpack": "18.3.1",
+    "next": "16.0.7",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-server-dom-turbopack": "19.2.1",
+    "react-server-dom-webpack": "19.2.1",
     "viem": "^2.38.4",
     "wagmi": "^2.19.5"
   },
@@ -30,10 +30,10 @@
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.19.23",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.0.5",
+    "eslint-config-next": "16.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
