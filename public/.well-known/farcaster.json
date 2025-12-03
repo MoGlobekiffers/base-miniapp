@@ -27,7 +27,7 @@
     "primaryCategory": "social",
     "tags": ["game", "daily", "rewards"],
     "subtitle": "Spin daily and earn rewards",
-    "description": "Spin the wheel every 12h to win Brain Points.",
+    "description": "Spin the wheel to win Brain Points.",
     "heroImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "tagline": "Spin and Earn on Base", 
     "ogTitle": "DailyWheel",
