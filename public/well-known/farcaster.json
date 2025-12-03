@@ -7,11 +7,11 @@
   "frame": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png?v=1",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/wheel-icon.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app",
-    "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png?v=1",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/wheel-icon.png",
     "buttonTitle": "Spin the Wheel",
-    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png?v=1",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/wheel-icon.png",
     "splashBackgroundColor": "#0f172a",
     "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
   }
