@@ -1,6 +1,6 @@
 {
   "accountAssociation": {
-    "header": "eyJfaWQiOiJmaWQiLCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NUVlN2MyODQ1MzYxMzI5RDk1RjNhZkZCNjY0NjU3NTk1NTE1RDIyMSJ9",
+    "header": "eyJmaWQiOjE1MTk0LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NUVlN2MyODQ1MzYxMzI5RDk1RjNhZkZCNjY0NjU3NTk1NTE1RDIyMSJ9",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
     "signature": "MHhkYjk1..."
   },
@@ -18,18 +18,14 @@
   "miniapp": {
     "version": "1",
     "name": "DailyWheel",
-    "homeUrl": "https://base-miniapp-gamma.vercel.app",
     "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "buttonTitle": "Spin ⚡",
     "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "splashBackgroundColor": "#0f172a",
+    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler",
     "primaryCategory": "social",
-    "tags": ["game", "daily", "rewards"],
-    "subtitle": "Spin daily and earn rewards",
-    "description": "A daily engagement game on Base. Spin the wheel every 12h to win Brain Points, badges, and mint exclusive rewards.",
-    "heroImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
-    "tagline": "Spin and Earn on Base",
-    "ogTitle": "DailyWheel",
-    "ogDescription": "Spin daily to earn Brain Points and badges.",
-    "ogImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png"
+    "tags": ["game", "daily", "rewards"]
   }
 }
