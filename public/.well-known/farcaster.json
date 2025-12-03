@@ -1,31 +1,18 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjIxNzYyNiwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDg5MDVCMjIzNjlBOUUzNWFFMTMwQmVhOTlEMjU4OENkYTU3MENBMTUifQ",
+    "header": "eyJmaWQiOjE1MTk0LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NUVlN2MyODQ1MzYxMzI5RDk1RjNhZkZCNjY0NjU3NTk1NTE1RDIyMSJ9",
     "payload": "eyJkb21haW4iOiJiYXNlLW1pbmlhcHAtZ2FtbWEudmVyY2VsLmFwcCJ9",
-    "signature": "3wc+sSUSIKVfjdfGO+VrZIlTxkdPoPWC9WshygEn0wJRJBOIYT7oxEKc6DPOIbab5IqAO4a7oHmQK0PkNqN0gBs="
+    "signature": "MHhkYjk1..."
   },
   "frame": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
-    "homeUrl": "https://base-miniapp-gamma.vercel.app/wheel",
-    "imageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "homeUrl": "https://base-miniapp-gamma.vercel.app",
+    "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "buttonTitle": "Spin ⚡",
-    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
+    "splashImageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "splashBackgroundColor": "#0f172a",
-    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler",
-    
-    "primaryCategory": "social",
-    "tags": ["game", "daily"],
-    "description": "Spin daily to earn Brain Points and badges.",
-    "subtitle": "Daily Rewards",
-    
-    "tagline": "Spin and  Earn on Base", 
-    "noindex": false,
-    
-    "heroImageUrl": "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png",
-    "screenshotUrls": [
-      "https://base-miniapp-gamma.vercel.app/images/wheel-preview.png"
-    ]
+    "webhookUrl": "https://base-miniapp-gamma.vercel.app/api/frame-handler"
   }
 }
