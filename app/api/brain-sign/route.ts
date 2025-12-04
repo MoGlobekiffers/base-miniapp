@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // DOMAINE EXACT (BrainScore)
+    // Domaine BrainScore (Correct)
     const domain = {
       name: "BrainScore", 
       version: "1",
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       verifyingContract: "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee", 
     } as const;
 
+    // Types (4 champs uniquement)
     const types = {
       Reward: [
         { name: "amount", type: "uint256" },
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // 👇 C'EST ICI : On renvoie la deadline pour éviter le crash frontend
     return NextResponse.json({ signature, deadline: validDeadline.toString() });
 
   } catch (error: any) {

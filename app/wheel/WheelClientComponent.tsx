@@ -13,12 +13,12 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 1. CONFIGURATION
+// CONFIGURATION
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 0; 
+const COOLDOWN_SEC = 0; // Mode Prod
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
@@ -52,6 +52,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
+// ABI (BrainScore.sol)
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -88,21 +89,16 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// NONCE DE LA BLOCKCHAIN + 1
+// Lecture Nonce Blockchain (+1 obligatoire)
 async function getNonce(player: string) {
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  try {
-    const nonce = await publicClient.readContract({
-      address: BRAIN_CONTRACT,
-      abi: CORRECT_ABI,
-      functionName: "nonces",
-      args: [player as `0x${string}`],
-    }) as bigint;
-    return Number(nonce) + 1; 
-  } catch (e) {
-    console.error("Nonce fetch failed", e);
-    throw e;
-  }
+  const nonce = await publicClient.readContract({
+    address: BRAIN_CONTRACT,
+    abi: CORRECT_ABI,
+    functionName: "nonces",
+    args: [player as `0x${string}`],
+  }) as bigint;
+  return Number(nonce) + 1; 
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
@@ -113,16 +109,20 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
+  // 👇 IMPORTANT : On retourne la deadline reçue
   return { signature: data.signature, deadline: data.deadline };
 }
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
-  // PAS DE SWITCHCHAIN (C'est ça qui bloque Rabby)
+  // Rabby ne doit pas être bloqué par le switchChain
+  try {
+      if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
+  } catch (e) { console.warn("Switch chain warning", e); }
   
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
 
-  // GAS FORCÉ pour ouvrir la fenêtre
+  // On force le gas pour ouvrir le wallet
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
@@ -130,7 +130,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
     functionName: "claim",
     args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
     chain: base,
-    gas: BigInt(500000),
+    gas: BigInt(600000),
   });
 }
 
@@ -140,7 +140,6 @@ export default function WheelClientPage() {
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
   const { data: walletClient } = useWalletClient(); 
-  const [isClaiming, setIsClaiming] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -280,35 +279,26 @@ export default function WheelClientPage() {
             ) : isSoon ? (
               <button onClick={() => {setResult(null); setCooldown(0);}} className="w-full py-3 bg-slate-800 text-white font-bold rounded-lg">Spin Again 🔄</button>
             ) : (
-              <button disabled={!address || claimed || !walletClient || (isSocial && proofLink.length < 10) || isClaiming} onClick={async () => {
+              <button disabled={!address || claimed || !walletClient || (isSocial && proofLink.length < 10)} onClick={async () => {
                   if (!address || !result || !walletClient) return;
-                  setIsClaiming(true); // ACTIVE LE LOADING
-                  
                   if (result === "Mint My Nft") {
-                    try { const balance = await createPublicClient({chain:base,transport:http(process.env.NEXT_PUBLIC_RPC_URL)}).readContract({address:NFT_CONTRACT_ADDRESS as `0x${string}`,abi:[{inputs:[{name:"owner",type:"address"}],name:"balanceOf",outputs:[{type:"uint256"}],stateMutability:"view",type:"function"}],functionName:'balanceOf',args:[address]}) as bigint; if(Number(balance)===0){alert("No NFT found!"); setHasClickedMint(false); setIsClaiming(false); return;} } catch{alert("Error checking NFT"); setIsClaiming(false); return;}
+                    try { const balance = await createPublicClient({chain:base,transport:http(process.env.NEXT_PUBLIC_RPC_URL)}).readContract({address:NFT_CONTRACT_ADDRESS as `0x${string}`,abi:[{inputs:[{name:"owner",type:"address"}],name:"balanceOf",outputs:[{type:"uint256"}],stateMutability:"view",type:"function"}],functionName:'balanceOf',args:[address]}) as bigint; if(Number(balance)===0){alert("No NFT found!"); setHasClickedMint(false); return;} } catch{alert("Error checking NFT"); return;}
                   }
-                  
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
-                  } catch (err: any) { 
-                    console.error(err); 
-                    alert(err.message || "Error claiming"); 
-                  } finally {
-                    setIsClaiming(false); // DESACTIVE LE LOADING
-                  }
-                }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)||isClaiming?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{isClaiming ? "..." : (claimed?"Done ✅":"Claim Points")}</button>
+                  } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
+                }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
             )}
           </div>
         </div>
       )}
 
-      {/* --- LA ROUE --- */}
+      {/* --- LA ROUE (SVG) --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -324,7 +314,7 @@ export default function WheelClientPage() {
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* TRANSFORM BOX POUR CENTRER */}
+          {/* 👇 TRANSFORM BOX pour rotation centrée */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
@@ -338,7 +328,7 @@ export default function WheelClientPage() {
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* BOUTON AVEC LOGO BLEU */}
+        {/* 👇 BOUTON SPIN (LOGO BLEU) */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
             <img src={`${APP_URL}/base-logo-in-blue.png`} className="absolute inset-0 w-full h-full object-cover" />
@@ -355,4 +345,3 @@ export default function WheelClientPage() {
     </main>
   );
 }
-
