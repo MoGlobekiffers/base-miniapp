@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
-import { useAccount, useDisconnect, useWalletClient, useReadContract, useConnect } from "wagmi"; // + useConnect
-import { injected } from "wagmi/connectors"; // + injected connector
+import { useAccount, useDisconnect, useWalletClient, useReadContract } from "wagmi"; 
 import sdk from '@farcaster/frame-sdk';
 
 import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type QuizQuestion } from "./quizPools";
@@ -13,10 +12,7 @@ import { base } from "viem/chains";
 import BadgesPanel from "../components/BadgesPanel"; 
 import Leaderboard from "../components/Leaderboard";
 
-// 👇 VOTRE URL VERCEL (Pour fixer les images)
-const APP_URL = "https://base-miniapp-gamma.vercel.app";
-
-// CONFIGURATION
+// 1. CONFIGURATION
 const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
@@ -55,6 +51,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
+// 2. ABI & HELPERS
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -113,8 +110,17 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   return { signature: data.signature, deadline: data.deadline };
 }
 
+// 👇 MODIFICATION MAJEURE ICI POUR RABBY
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
-  if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
+  
+  // On tente le switch, mais on ne bloque pas si ça échoue (Rabby gère parfois ça tout seul ou est déjà sur la bonne chaine)
+  try {
+    if(walletClient.chain?.id !== base.id) {
+        await walletClient.switchChain({ id: base.id });
+    }
+  } catch (e) {
+      console.warn("Chain switch error (ignored):", e);
+  }
   
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
@@ -128,27 +134,17 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
+// 3. COMPOSANT
 export default function WheelClientPage() { 
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
   const { disconnect } = useDisconnect();
-  const { connect } = useConnect();
   const { data: walletClient } = useWalletClient(); 
 
-  // 👇 FIX CONNEXION FARCASTER
   useEffect(() => {
-    const load = async () => {
-      const context = await sdk.context;
-      if (context?.user && !isConnected) {
-        // Tente de connecter automatiquement si on est dans une Frame
-        try {
-            connect({ connector: injected() });
-        } catch (e) { console.log("Auto-connect failed", e); }
-      }
-      await sdk.actions.ready(); 
-    };
+    const load = async () => { await sdk.actions.ready(); };
     if (sdk && !isSDKLoaded) { setIsSDKLoaded(true); load(); }
-  }, [isSDKLoaded, isConnected, connect]);
+  }, [isSDKLoaded]);
 
   const { data: scoreData, refetch: refetchScore } = useReadContract({
     address: BRAIN_CONTRACT, abi: CORRECT_ABI, functionName: "getPlayer", args: [address as `0x${string}`], query: { staleTime: 0, enabled: !!address }
@@ -286,9 +282,16 @@ export default function WheelClientPage() {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
+                    
+                    // APPEL AVEC GESTION ERREUR
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
+                    
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
-                  } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
+                  } catch (err: any) { 
+                    console.error(err); 
+                    // Affiche l'erreur réelle pour comprendre si Rabby bloque
+                    alert("Claim Error: " + (err.message || err)); 
+                  }
                 }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
             )}
           </div>
@@ -297,7 +300,6 @@ export default function WheelClientPage() {
 
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -310,10 +312,10 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
-        {/* CERCLE ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
+          {/* TransformBox Fill-Box pour rotation centrée */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
@@ -327,10 +329,9 @@ export default function WheelClientPage() {
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* 👇 FIX LOGO IMAGE : Utilisation de APP_URL pour chemin absolu */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
-            <img src={`${APP_URL}/base-logo-in-blue.png`} className="absolute inset-0 w-full h-full object-cover" />
+            <img src="/base-logo-in-blue.png" className="absolute inset-0 w-full h-full object-cover" />
             <span className="relative z-10 text-2xl font-black text-white">SPIN</span>
           </button>
         </div>
