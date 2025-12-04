@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // DOMAINE "BrainScore" (Celui du contrat déployé)
+    // DOMAINE EXACT (BrainScore)
     const domain = {
       name: "BrainScore", 
       version: "1",
