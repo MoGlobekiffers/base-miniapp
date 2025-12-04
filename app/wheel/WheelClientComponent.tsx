@@ -25,6 +25,8 @@ const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
+
+// Adresse forcée
 const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
 const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
@@ -52,7 +54,7 @@ const QUEST_POINTS: Record<string, number> = { "Base Speed Quiz": 5, "Farcaster 
 const SEGMENTS = QUESTS.length;
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#38bdf8", "#f97316", "#22c55e", "#3b82f6", "#f97316"];
 
-// ABI EXACTE (5 arguments pour claim)
+// ABI EXACTE
 const CORRECT_ABI = [
   {
     "inputs": [
@@ -89,27 +91,19 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-// Nonce Blockchain (+1)
+// NONCE BLOCKCHAIN
 async function getNonce(player: string) {
-  console.log("Fetching nonce for:", player);
   const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  try {
-    const nonce = await publicClient.readContract({
-      address: BRAIN_CONTRACT,
-      abi: CORRECT_ABI,
-      functionName: "nonces",
-      args: [player as `0x${string}`],
-    }) as bigint;
-    console.log("Nonce fetched:", nonce);
-    return Number(nonce) + 1;
-  } catch (e) {
-    console.error("Error fetching nonce:", e);
-    throw e;
-  }
+  const nonce = await publicClient.readContract({
+    address: BRAIN_CONTRACT,
+    abi: CORRECT_ABI,
+    functionName: "nonces",
+    args: [player as `0x${string}`],
+  }) as bigint;
+  return Number(nonce) + 1; 
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
-  console.log("Signing reward...");
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -117,15 +111,16 @@ async function signReward(player: string, questId: string, delta: number, nonce:
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to sign");
-  console.log("Reward signed:", data);
   return { signature: data.signature, deadline: data.deadline };
 }
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
-  console.log("Sending claim transaction...");
+  // PAS DE SWITCHCHAIN (Ça bloque Rabby)
+  
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
 
+  // FORCE GAS
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
@@ -133,7 +128,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
     functionName: "claim",
     args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
     chain: base,
-    gas: BigInt(600000), // Limite manuelle large
+    gas: BigInt(300000), // Gas forcé pour ouvrir le wallet
   });
 }
 
@@ -143,7 +138,7 @@ export default function WheelClientPage() {
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
   const { data: walletClient } = useWalletClient(); 
-  const [isClaiming, setIsClaiming] = useState(false); // État de chargement
+  const [isClaiming, setIsClaiming] = useState(false); // État de loading
 
   useEffect(() => {
     const load = async () => {
@@ -285,29 +280,26 @@ export default function WheelClientPage() {
             ) : (
               <button disabled={!address || claimed || !walletClient || (isSocial && proofLink.length < 10) || isClaiming} onClick={async () => {
                   if (!address || !result || !walletClient) return;
-                  setIsClaiming(true); // Bloque le bouton
+                  
+                  // 👇 DEBUT DE LA TRANSACTION
+                  setIsClaiming(true);
+                  
                   if (result === "Mint My Nft") {
                     try { const balance = await createPublicClient({chain:base,transport:http(process.env.NEXT_PUBLIC_RPC_URL)}).readContract({address:NFT_CONTRACT_ADDRESS as `0x${string}`,abi:[{inputs:[{name:"owner",type:"address"}],name:"balanceOf",outputs:[{type:"uint256"}],stateMutability:"view",type:"function"}],functionName:'balanceOf',args:[address]}) as bigint; if(Number(balance)===0){alert("No NFT found!"); setHasClickedMint(false); setIsClaiming(false); return;} } catch{alert("Error checking NFT"); setIsClaiming(false); return;}
                   }
                   try {
-                    console.log("Starting claim process...");
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    console.log("Nonce fetched:", nonce);
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    console.log("Signature received:", signature);
-                    
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
-                    console.log("Transaction sent successfully!");
-                    
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { 
-                    console.error("Claim Error Full Log:", err); 
-                    alert("Claim failed: " + (err.message || err)); 
+                    console.error(err); 
+                    alert(err.message || "Transaction failed or rejected"); 
                   } finally {
-                    setIsClaiming(false);
+                    setIsClaiming(false); // On débloque le bouton
                   }
-                }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)||isClaiming?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{isClaiming ? "Processing..." : (claimed?"Done ✅":"Claim Points")}</button>
+                }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)||isClaiming?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{isClaiming ? "Pending..." : (claimed?"Done ✅":"Claim Points")}</button>
             )}
           </div>
         </div>
@@ -315,7 +307,6 @@ export default function WheelClientPage() {
 
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -331,6 +322,7 @@ export default function WheelClientPage() {
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
+          {/* TRANSFORM BOX POUR ROTATION CENTREE */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
@@ -344,7 +336,6 @@ export default function WheelClientPage() {
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* 👇 BOUTON SPIN AVEC LOGO BLEU */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
             <img src={`${APP_URL}/base-logo-in-blue.png`} className="absolute inset-0 w-full h-full object-cover" />
