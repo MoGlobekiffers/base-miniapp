@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // DOMAINE EXACT DU CONTRAT BrainScore.sol
+    // DOMAINE "BrainScore" (Celui du contrat déployé)
     const domain = {
       name: "BrainScore", 
       version: "1",
@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
       verifyingContract: "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee", 
     } as const;
 
-    // TYPES EXACTS (4 champs)
     const types = {
       Reward: [
         { name: "amount", type: "uint256" },

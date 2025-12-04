@@ -18,17 +18,14 @@ const R_OUT = 260;
 const R_IN = 78;
 const POINTER_ANGLE = 0;
 const SPIN_DURATION_MS = 4500;
-const COOLDOWN_SEC = 8 * 3600; // 8H Cooldown
+const COOLDOWN_SEC = 8 * 3600; // Mode Prod
 
 const DEV_MODE = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DW_DEV === "1";
 const NFT_CONTRACT_ADDRESS = "0x5240e300f0d692d42927602bc1f0bed6176295ed";
 const NFT_COLLECTION_LINK = "https://opensea.io/collection/pixel-brainiac";
 const MINI_APP_1 = "https://cast-my-vibe.vercel.app/";
 const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
-
-// Adresse du contrat BrainScore
 const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
-// URL absolue pour les images
 const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
@@ -117,20 +114,18 @@ async function signReward(player: string, questId: string, delta: number, nonce:
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   
-  // ⚠️ MODIFICATION CRITIQUE POUR RABBY :
-  // On a SUPPRIMÉ le bloc "await switchChain" ici.
-  // Si on est sur la mauvaise chaîne, "writeContract" échouera proprement ou le wallet demandera le switch lui-même.
-  // C'est ce "await" qui bloquait Rabby indéfiniment.
-
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
 
+  // 👇 FIX RABBY : On force le GAS pour que la fenêtre s'ouvre à tous les coups
   return await walletClient.writeContract({
     account: player as `0x${string}`,
     address: BRAIN_CONTRACT,
     abi: CORRECT_ABI,
     functionName: "claim",
     args: [absAmount, isNegative, BigInt(nonce), BigInt(deadline), signature],
+    chain: base,
+    gas: BigInt(600000), // Limite manuelle large pour bypasser la simulation
   });
 }
 
@@ -238,8 +233,6 @@ export default function WheelClientPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
-      
-      {/* HEADER */}
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
         {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0,6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <ConnectWallet className="!h-8 !px-3 !text-xs" />}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
@@ -248,7 +241,6 @@ export default function WheelClientPage() {
       <div className="mt-4 mb-2 text-center"><h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">DailyWheel</h1></div>
       <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono text-[10px] text-slate-500">{DEV_MODE && address && <button onClick={() => {localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0);}} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}<span>{cooldownLabel}</span></div>
 
-      {/* QUIZ MODAL */}
       {activeQuiz && !quizResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95">
           <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-6 max-w-sm w-full shadow-lg">
@@ -265,7 +257,6 @@ export default function WheelClientPage() {
          </div>
       )}
 
-      {/* CLAIM PANEL */}
       {showClaim && (
         <div className="w-full max-w-xs mb-6 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -291,10 +282,11 @@ export default function WheelClientPage() {
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
                     const nonce = await getNonce(address);
-                    // 👇 RÉCUPÉRATION DEADLINE DE L'API
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    // 👇 ENVOI A LA BLOCKCHAIN (sans switchChain bloquant)
+                    
+                    // 👇 APPEL DE LA FONCTION AVEC GAS FORCE (POUR RABBY)
                     await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
+                    
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
                   } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
                 }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
@@ -307,13 +299,20 @@ export default function WheelClientPage() {
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
-            <path d="M25 40 L10 10 H40 Z" fill="#3b82f6" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
+            <defs>
+              <linearGradient id="neonArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#3b82f6" />
+              </linearGradient>
+            </defs>
+            <path d="M25 40 L10 10 H40 Z" fill="url(#neonArrow)" stroke="#cffafe" strokeWidth={2} strokeLinejoin="round" />
           </svg>
         </div>
 
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
+          {/* 👇 TRANSFORM BOX POUR ROTATION CENTRÉE */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
