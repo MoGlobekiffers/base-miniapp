@@ -28,6 +28,7 @@ const MINI_APP_2 = "https://farcaster.xyz/miniapps/OPdWRfCjGFXR/otc-swap";
 
 // Adresse forcée
 const BRAIN_CONTRACT = "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee";
+// URL absolue pour les images
 const APP_URL = "https://base-miniapp-gamma.vercel.app";
 
 const SOCIAL_QUESTS = ["Cast Party", "Like Storm", "Reply Sprint", "Invite & Share", "Creative #gm", "Meme Factory", "Crazy promo", "Mini apps mashup"];
@@ -75,13 +76,6 @@ const CORRECT_ABI = [
     "outputs": [{"name": "total", "type": "uint256"}, {"name": "quests", "type": "uint256"}],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs": [{"name": "user", "type": "address"}],
-    "name": "nonces",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
   }
 ] as const;
 
@@ -91,18 +85,8 @@ function wedgePath(rOut: number, rIn: number, a0: number, a1: number) {
   return `M ${rOut * Math.cos(rad(a0))} ${rOut * Math.sin(rad(a0))} A ${rOut} ${rOut} 0 ${largeArc} 1 ${rOut * Math.cos(rad(a1))} ${rOut * Math.sin(rad(a1))} L ${rIn * Math.cos(rad(a1))} ${rIn * Math.sin(rad(a1))} A ${rIn} ${rIn} 0 ${largeArc} 0 ${rIn * Math.cos(rad(a0))} ${rIn * Math.sin(rad(a0))} Z`;
 }
 
-async function getNonce(player: string) {
-  const publicClient = createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  const nonce = await publicClient.readContract({
-    address: BRAIN_CONTRACT,
-    abi: CORRECT_ABI,
-    functionName: "nonces",
-    args: [player as `0x${string}`],
-  }) as bigint;
-  return Number(nonce) + 1; 
-}
-
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
+  console.log("Signing reward for:", player, nonce);
   const res = await fetch("/api/brain-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -114,16 +98,10 @@ async function signReward(player: string, questId: string, delta: number, nonce:
 }
 
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
-  console.log("Attempting claim with wallet:", walletClient);
+  console.log("Sending claim transaction...");
   
-  // Tentative de switch chain (non-bloquante pour Rabby)
-  try {
-    if (walletClient.chain?.id !== base.id) {
-        await walletClient.switchChain({ id: base.id });
-    }
-  } catch (e) {
-      console.warn("Chain switch skipped/failed (Rabby might handle it):", e);
-  }
+  // On ne force pas le switchChain ici pour éviter que Rabby bloque
+  // Si l'user est sur la mauvaise chaine, le wallet le demandera lui-même au moment du writeContract
   
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
@@ -289,21 +267,18 @@ export default function WheelClientPage() {
                   }
                   try {
                     const delta = QUEST_POINTS[result] ?? 0;
-                    const nonce = await getNonce(address);
+                    // 👇 UTILISATION DE DATE.NOW() POUR EVITER LE BLOCAGE NONCE
+                    const nonce = Date.now(); 
                     const { signature, deadline } = await signReward(address, result, delta, nonce);
                     
-                    // GESTION ERREUR RABBY
-                    try {
-                        await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
-                    } catch (txError: any) {
-                        console.error("TX Error:", txError);
-                        // Si c'est Rabby, l'erreur peut être silencieuse ou explicite
-                        alert("Transaction failed or rejected. Check your wallet.");
-                        return;
-                    }
-
+                    console.log("Ready to send transaction...");
+                    await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
+                    
                     addBrain(address, result, delta); setClaimed(true); refetchScore();
-                  } catch (err: any) { console.error(err); alert(err.message || "Error signing"); }
+                  } catch (err: any) { 
+                    console.error("Claim Error:", err); 
+                    alert("Error: " + (err.message || "Transaction failed")); 
+                  }
                 }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
             )}
           </div>
@@ -312,7 +287,7 @@ export default function WheelClientPage() {
 
       {/* --- LA ROUE --- */}
       <div className="relative w-full max-w-[360px] aspect-square md:max-w-[500px] mb-8">
-        {/* FLÈCHE */}
+        {/* FLÈCHE CENTRÉE */}
         <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: -10 }}>
           <svg width="50" height="40" viewBox="0 0 50 40" className="drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">
             <defs>
@@ -325,10 +300,11 @@ export default function WheelClientPage() {
           </svg>
         </div>
 
+        {/* CERCLE ROUE */}
         <svg viewBox="-300 -300 600 600" className="w-full h-full drop-shadow-2xl">
           <circle r={R_OUT + 12} fill="#0f172a" />
           <circle r={R_OUT + 8} fill="none" stroke="#1e293b" strokeWidth={4} />
-          {/* TRANSFORM BOX POUR ROTATION CENTREE */}
+          {/* 👇 TRANSFORMBOX REMIS POUR ROTATION CENTRÉE */}
           <g style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center", transformBox: "fill-box", transition: `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.2,0.8,0.2,1)` }}>
             {segments.map((s) => (
               <path key={`w-${s.i}`} d={wedgePath(R_OUT, R_IN, s.a0, s.a1)} fill={s.color} stroke="#0f172a" strokeWidth={2} />
@@ -342,9 +318,9 @@ export default function WheelClientPage() {
           <circle r={R_IN} fill="#0f172a" stroke="#38bdf8" strokeWidth={4} />
         </svg>
 
-        {/* 👇 BOUTON SPIN RESTAURÉ (LOGO BLEU) */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button onClick={handleSpin} disabled={!(!spinning && (!cooldown || DEV_MODE))} className={`pointer-events-auto w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden relative ${!(!spinning && (!cooldown || DEV_MODE)) ? "opacity-50" : ""}`}>
+            {/* 👇 IMAGE AVEC URL ABSOLUE (FIX IMAGE CASSÉE) */}
             <img src={`${APP_URL}/base-logo-in-blue.png`} className="absolute inset-0 w-full h-full object-cover" />
             <span className="relative z-10 text-2xl font-black text-white">SPIN</span>
           </button>
