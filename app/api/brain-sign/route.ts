@@ -25,15 +25,15 @@ export async function POST(req: NextRequest) {
     const officialPoints = QUEST_POINTS[questId];
     if (delta !== officialPoints) return NextResponse.json({ error: "Points mismatch" }, { status: 403 });
 
-    // 1. Domaine Correct (Vu dans BrainScore.sol)
+    // DOMAINE EXACT DU CONTRAT BrainScore.sol
     const domain = {
-      name: "BrainScore",
+      name: "BrainScore", 
       version: "1",
       chainId: 8453, 
-      verifyingContract: process.env.NEXT_PUBLIC_BRAIN_CONTRACT as `0x${string}`, // Ou l'adresse en dur si vous préférez
+      verifyingContract: "0x55E98A1Bcb99a8A5F20C15C051345173D590ffee", 
     } as const;
 
-    // 2. Types Corrects (Pas de player, pas de questId)
+    // TYPES EXACTS (4 champs)
     const types = {
       Reward: [
         { name: "amount", type: "uint256" },
@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
     } as const;
 
     const validDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-    
     const isNegative = delta < 0;
     const absAmount = BigInt(Math.abs(delta));
 
