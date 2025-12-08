@@ -7,7 +7,7 @@
   "frame": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app",
     "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "buttonTitle": "Spin Now",
@@ -28,7 +28,7 @@
   "miniapp": {
     "version": "1",
     "name": "DailyWheel",
-    "iconUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
+    "iconUrl": "https://base-miniapp-gamma.vercel.app/icon.png",
     "homeUrl": "https://base-miniapp-gamma.vercel.app",
     "imageUrl": "https://base-miniapp-gamma.vercel.app/preview-wheel.png",
     "buttonTitle": "Spin Now",
