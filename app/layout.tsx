@@ -3,7 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "@coinbase/onchainkit/styles.css";
 // Vérifiez que ce fichier existe bien à cet endroit, sinon ajustez le chemin (ex: ./components/...)
-import OnchainKitProviderClient from "./OnchainKitProviderClient"; 
+import OnchainKitProviderClient from "./OnchainKitProviderClient";
+import AppKitProvider from "@/app/context/AppKitProvider";
+import { headers } from "next/headers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -47,15 +49,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersObj = await headers();
+  const cookies = headersObj.get('cookie');
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <OnchainKitProviderClient>{children}</OnchainKitProviderClient>
+        <AppKitProvider cookies={cookies}>
+          <OnchainKitProviderClient>{children}</OnchainKitProviderClient>
+        </AppKitProvider>
       </body>
     </html>
   );

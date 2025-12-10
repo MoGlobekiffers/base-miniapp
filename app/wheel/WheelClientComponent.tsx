@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
-import { useAccount, useDisconnect, useWalletClient, useReadContract, useConnect } from "wagmi"; 
+import { useAccount, useDisconnect, useWalletClient, useReadContract, useConnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 import sdk from '@farcaster/frame-sdk';
 
@@ -10,7 +10,7 @@ import { getRandomBaseQuiz, getRandomFarcasterQuiz, getRandomMiniAppQuiz, type Q
 import { useBrain, addBrain } from "../brain";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
-import BadgesPanel from "../components/BadgesPanel"; 
+import BadgesPanel from "../components/BadgesPanel";
 import Leaderboard from "../components/Leaderboard";
 
 // CONFIGURATION
@@ -33,13 +33,13 @@ const COMING_SOON_QUESTS = ["Web3 Survivor", "Mystery Challenge"];
 
 const QUEST_INSTRUCTIONS: Record<string, string> = {
   "Cast Party": "🎙️ Post a new cast on Warpcast to share your vibes.",
-  "Like Storm": "❤️ Go like 1 recent cast from your feed.", 
-  "Reply Sprint": "💬 Reply to 1 cast with something meaningful.", 
+  "Like Storm": "❤️ Go like 1 recent cast from your feed.",
+  "Reply Sprint": "💬 Reply to 1 cast with something meaningful.",
   "Invite & Share": "🔗 Share this frame or invite a friend to play.",
   "Creative #gm": "☀️ Cast a creative 'gm' with a cool photo.",
   "Meme Factory": "🐸 Create and cast a meme about Base or Farcaster.",
   "Crazy promo": "📢 Check out the latest promo on /base channel.",
-  "Mini apps mashup": "📱 Use 1 other mini-app today and paste proof.", 
+  "Mini apps mashup": "📱 Use 1 other mini-app today and paste proof.",
   "Daily check-in": "✅ Simply claim your daily reward point.",
   "Bankruptcy": "📉 Ouch! Market crash. You lose points.",
   "Double points": "✖️ Multiplier activated! (No points this turn).",
@@ -68,16 +68,16 @@ const CORRECT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [{"name": "user", "type": "address"}],
+    "inputs": [{ "name": "user", "type": "address" }],
     "name": "getPlayer",
-    "outputs": [{"name": "total", "type": "uint256"}, {"name": "quests", "type": "uint256"}],
+    "outputs": [{ "name": "total", "type": "uint256" }, { "name": "quests", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"name": "owner", "type": "address"}],
+    "inputs": [{ "name": "owner", "type": "address" }],
     "name": "nonces",
-    "outputs": [{"name": "", "type": "uint256"}],
+    "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   }
@@ -98,7 +98,7 @@ async function getNonce(player: string) {
     functionName: "nonces",
     args: [player as `0x${string}`],
   }) as bigint;
-  return Number(nonce) + 1; 
+  return Number(nonce) + 1;
 }
 
 async function signReward(player: string, questId: string, delta: number, nonce: number, proof?: any) {
@@ -116,9 +116,9 @@ async function signReward(player: string, questId: string, delta: number, nonce:
 async function sendClaim(walletClient: any, player: string, questId: string, delta: number, nonce: number, deadline: number, signature: `0x${string}`) {
   // Rabby ne doit pas être bloqué par le switchChain
   try {
-      if(walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
+    if (walletClient.chain?.id !== base.id) await walletClient.switchChain({ id: base.id });
   } catch (e) { console.warn("Switch chain warning", e); }
-  
+
   const isNegative = delta < 0;
   const absAmount = BigInt(Math.abs(delta));
 
@@ -134,20 +134,20 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
   });
 }
 
-export default function WheelClientPage() { 
+export default function WheelClientPage() {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
-  const { data: walletClient } = useWalletClient(); 
+  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     const load = async () => {
       const context = await sdk.context;
       if (context?.user && !isConnected) {
-        try { connect({ connector: injected() }); } catch (e) {}
+        try { connect({ connector: injected() }); } catch (e) { }
       }
-      await sdk.actions.ready(); 
+      await sdk.actions.ready();
     };
     if (sdk && !isSDKLoaded) { setIsSDKLoaded(true); load(); }
   }, [isSDKLoaded, isConnected, connect]);
@@ -155,8 +155,8 @@ export default function WheelClientPage() {
   const { data: scoreData, refetch: refetchScore } = useReadContract({
     address: BRAIN_CONTRACT, abi: CORRECT_ABI, functionName: "getPlayer", args: [address as `0x${string}`], query: { staleTime: 0, enabled: !!address }
   });
-  const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0; 
-  
+  const currentOnChainScore = (scoreData && Array.isArray(scoreData)) ? Number(scoreData[0]) : 0;
+
   const [mounted, setMounted] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -166,7 +166,6 @@ export default function WheelClientPage() {
   const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(null);
   const [claimed, setClaimed] = useState(false);
   const [hasClickedMint, setHasClickedMint] = useState(false);
-  const [proofLink, setProofLink] = useState("");
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -195,23 +194,24 @@ export default function WheelClientPage() {
   const handleSpin = () => {
     if (!address) { alert("Connect wallet."); return; }
     if (!DEV_MODE && (spinning || cooldown > 0)) return;
-    setSpinning(true); setActiveQuiz(null); setQuizResult(null); setClaimed(false); setResult(null); setHasClickedMint(false); setProofLink(""); setSelectedChoice(null);
-    
+    if (!DEV_MODE && (spinning || cooldown > 0)) return;
+    setSpinning(true); setActiveQuiz(null); setQuizResult(null); setClaimed(false); setResult(null); setHasClickedMint(false); setSelectedChoice(null);
+
     const randomDeg = Math.random() * 360;
     const finalRotation = rotation + 8 * 360 + randomDeg;
     setRotation(finalRotation);
-    
+
     setTimeout(() => {
       const idx = Math.floor(((POINTER_ANGLE - ((finalRotation % 360) + 360) % 360) % 360 + 360) % 360 / anglePerSegment) % SEGMENTS;
       const q = QUESTS[idx]; setResult(q);
-      
+
       if (q === "Base Speed Quiz") setActiveQuiz(getRandomBaseQuiz());
       else if (q === "Farcaster Flash Quiz") setActiveQuiz(getRandomFarcasterQuiz());
       else if (q === "Mini app quiz") setActiveQuiz(getRandomMiniAppQuiz());
       else setActiveQuiz(null);
-      
+
       if (address && !DEV_MODE && !COMING_SOON_QUESTS.includes(q) && q !== "Bonus spin") {
-          localStorage.setItem(`dw:lastSpin:${address.toLowerCase()}`, String(Date.now()));
+        localStorage.setItem(`dw:lastSpin:${address.toLowerCase()}`, String(Date.now()));
       }
       setSpinning(false);
     }, SPIN_DURATION_MS);
@@ -231,7 +231,7 @@ export default function WheelClientPage() {
   }, [cooldown, address]);
 
   if (!mounted) return <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</main>;
-  
+
   const isSocial = SOCIAL_QUESTS.includes(result || "");
   const isSoon = COMING_SOON_QUESTS.includes(result || "");
   const showClaim = result && (QUEST_POINTS[result] ?? 0) !== 0 && (!["Base Speed Quiz", "Farcaster Flash Quiz", "Mini app quiz"].includes(result || "") || quizResult === "correct");
@@ -239,12 +239,12 @@ export default function WheelClientPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
-        {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0,6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <ConnectWallet className="!h-8 !px-3 !text-xs" />}
+        {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0, 6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <appkit-button size="sm" balance="hide" />}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
       </div>
 
       <div className="mt-4 mb-2 text-center"><h1 className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">DailyWheel</h1></div>
-      <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono text-[10px] text-slate-500">{DEV_MODE && address && <button onClick={() => {localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0);}} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}<span>{cooldownLabel}</span></div>
+      <div className="flex justify-center items-center gap-2 mb-4 h-4 font-mono text-[10px] text-slate-500">{DEV_MODE && address && <button onClick={() => { localStorage.removeItem(`dw:lastSpin:${address.toLowerCase()}`); setCooldown(0); }} className="border border-emerald-500/50 text-emerald-300 px-1 rounded">Reset</button>}<span>{cooldownLabel}</span></div>
 
       {activeQuiz && !quizResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95">
@@ -257,9 +257,9 @@ export default function WheelClientPage() {
       )}
 
       {quizResult === "wrong" && (
-         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center"><div className="text-4xl mb-4">❌</div><h3 className="text-xl font-bold text-red-400 mb-2">Wrong!</h3><button onClick={() => {setQuizResult(null); setResult(null);}} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">Close</button></div>
-         </div>
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-xs w-full text-center"><div className="text-4xl mb-4">❌</div><h3 className="text-xl font-bold text-red-400 mb-2">Wrong!</h3><button onClick={() => { setQuizResult(null); setResult(null); }} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">Close</button></div>
+        </div>
       )}
 
       {showClaim && (
@@ -267,31 +267,29 @@ export default function WheelClientPage() {
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-900/90 p-3 flex flex-col items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             <div className="text-sm font-bold text-emerald-400 mb-2">{result === "Mint My Nft" ? "NFT Unlocked! 🎨" : isSoon ? "Coming Soon 🚧" : "Quest Complete!"}</div>
             {result && QUEST_INSTRUCTIONS[result] && !claimed && !isSoon && <div className="mb-4 p-2 bg-slate-950/50 rounded border border-slate-700/50 text-center"><p className="text-xs text-slate-300 italic">{QUEST_INSTRUCTIONS[result]}</p></div>}
-            
-            {isSocial && !claimed && !isSoon && (
-                <div className="mb-3 w-full"><label className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 block">Proof of Work</label><input type="text" placeholder="Paste Warpcast link" value={proofLink} onChange={(e) => setProofLink(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white" /></div>
-            )}
+
+
 
             {result === "Mint My Nft" && !hasClickedMint ? (
               <a href={NFT_COLLECTION_LINK} target="_blank" rel="noopener noreferrer" onClick={() => setHasClickedMint(true)} className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded text-center">🚀 Step 1: Mint NFT</a>
             ) : result === "Test a top mini app" && !hasClickedMint ? (
-              <a href={Math.floor(Date.now()/(12*3600000))%2===0?MINI_APP_1:MINI_APP_2} target="_blank" rel="noopener noreferrer" onClick={() => setHasClickedMint(true)} className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold rounded text-center">📱 Step 1: Open App</a>
+              <a href={Math.floor(Date.now() / (12 * 3600000)) % 2 === 0 ? MINI_APP_1 : MINI_APP_2} target="_blank" rel="noopener noreferrer" onClick={() => setHasClickedMint(true)} className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold rounded text-center">📱 Step 1: Open App</a>
             ) : isSoon ? (
-              <button onClick={() => {setResult(null); setCooldown(0);}} className="w-full py-3 bg-slate-800 text-white font-bold rounded-lg">Spin Again 🔄</button>
+              <button onClick={() => { setResult(null); setCooldown(0); }} className="w-full py-3 bg-slate-800 text-white font-bold rounded-lg">Spin Again 🔄</button>
             ) : (
-              <button disabled={!address || claimed || !walletClient || (isSocial && proofLink.length < 10)} onClick={async () => {
-                  if (!address || !result || !walletClient) return;
-                  if (result === "Mint My Nft") {
-                    try { const balance = await createPublicClient({chain:base,transport:http(process.env.NEXT_PUBLIC_RPC_URL)}).readContract({address:NFT_CONTRACT_ADDRESS as `0x${string}`,abi:[{inputs:[{name:"owner",type:"address"}],name:"balanceOf",outputs:[{type:"uint256"}],stateMutability:"view",type:"function"}],functionName:'balanceOf',args:[address]}) as bigint; if(Number(balance)===0){alert("No NFT found!"); setHasClickedMint(false); return;} } catch{alert("Error checking NFT"); return;}
-                  }
-                  try {
-                    const delta = QUEST_POINTS[result] ?? 0;
-                    const nonce = await getNonce(address);
-                    const { signature, deadline } = await signReward(address, result, delta, nonce);
-                    await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
-                    addBrain(address, result, delta); setClaimed(true); refetchScore();
-                  } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
-                }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address||claimed||(isSocial&&proofLink.length<10)?"bg-slate-800 text-slate-500":"bg-emerald-500 text-white"}`}>{claimed?"Done ✅":"Claim Points"}</button>
+              <button disabled={!address || claimed || !walletClient} onClick={async () => {
+                if (!address || !result || !walletClient) return;
+                if (result === "Mint My Nft") {
+                  try { const balance = await createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_RPC_URL) }).readContract({ address: NFT_CONTRACT_ADDRESS as `0x${string}`, abi: [{ inputs: [{ name: "owner", type: "address" }], name: "balanceOf", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" }], functionName: 'balanceOf', args: [address] }) as bigint; if (Number(balance) === 0) { alert("No NFT found!"); setHasClickedMint(false); return; } } catch { alert("Error checking NFT"); return; }
+                }
+                try {
+                  const delta = QUEST_POINTS[result] ?? 0;
+                  const nonce = await getNonce(address);
+                  const { signature, deadline } = await signReward(address, result, delta, nonce);
+                  await sendClaim(walletClient, address, result, delta, nonce, deadline, signature);
+                  addBrain(address, result, delta); setClaimed(true); refetchScore();
+                } catch (err: any) { console.error(err); alert(err.message || "Error claiming"); }
+              }} className={`w-full px-4 py-2 rounded text-xs font-bold uppercase ${!address || claimed ? "bg-slate-800 text-slate-500" : "bg-emerald-500 text-white"}`}>{claimed ? "Done ✅" : "Claim Points"}</button>
             )}
           </div>
         </div>
