@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppKit } from '@reown/appkit/react';
+
 import { useEffect, useMemo, useState } from "react";
 import { ConnectWallet } from "@coinbase/onchainkit/wallet";
 import { useAccount, useDisconnect, useWalletClient, useReadContract, useConnect } from "wagmi";
@@ -136,6 +138,7 @@ async function sendClaim(walletClient: any, player: string, questId: string, del
 
 export default function WheelClientPage() {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
+  const { open } = useAppKit();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect } = useConnect();
@@ -239,7 +242,7 @@ export default function WheelClientPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center pt-2 px-2 overflow-x-hidden relative">
       <div className="w-full bg-slate-900/80 border-b border-slate-800 p-2 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm">
-        {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0, 6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <appkit-button size="sm" balance="hide" />}
+        {address ? <div className="flex items-center gap-2 bg-slate-800 rounded-full px-3 py-1.5 border border-slate-700"><span className="text-xs font-mono text-slate-300">{address.slice(0, 6)}...{address.slice(-4)}</span><span className="text-xs text-amber-400 font-bold border-l border-slate-600 pl-2">{currentOnChainScore} 🧠</span></div> : <button onClick={() => open()} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-4 rounded-full text-xs shadow-lg transition-all">Connect Wallet</button>}
         {address && <button onClick={() => disconnect()} className="text-xs text-slate-400">Disconnect</button>}
       </div>
 
